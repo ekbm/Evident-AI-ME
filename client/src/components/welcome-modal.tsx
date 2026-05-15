@@ -46,7 +46,7 @@ function highlightModeSwitcher() {
 
 export function WelcomeModal({ isAuthenticated, hasSeenWelcomeServer }: WelcomeModalProps) {
   const { toast } = useToast();
-  const { verticalMode } = useMode();
+  const { mode: verticalMode } = useMode();
 
   useEffect(() => {
     if (!isAuthenticated) return;
