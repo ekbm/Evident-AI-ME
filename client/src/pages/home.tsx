@@ -2567,7 +2567,7 @@ export default function Home() {
               {/* === DESKTOP: Two-column workspace layout === */}
               <div className="hidden md:flex gap-3" data-testid="knowledge-workspace-desktop">
                 {/* LEFT: Upload + Documents + FAQ (same layout as mobile) */}
-                <div className="w-72 lg:w-[24rem] xl:w-[28rem] shrink-0 border rounded-lg bg-card overflow-y-auto flex flex-col">
+                <div className="w-72 lg:w-[24rem] xl:w-[380px] shrink-0 border rounded-lg bg-card overflow-y-auto flex flex-col">
                   {allAssets && allAssets.length > 0 && (
                     <div className="mx-3 mt-3 mb-1">
                       <SelectedDocumentsBox
@@ -2745,9 +2745,9 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* RIGHT: Mode + Full Ask Evi */}
+                {/* MIDDLE: Full Ask Evi (Mode header hidden at xl, lives in right rail) */}
                 <div className="flex-1 min-w-0 flex flex-col">
-                  <div className="shrink-0 px-3 py-2 border-b flex items-center gap-3 bg-card rounded-t-lg border border-b-0">
+                  <div className="xl:hidden shrink-0 px-3 py-2 border-b flex items-center gap-3 bg-card rounded-t-lg border border-b-0">
                     <h3 className="text-sm font-semibold text-muted-foreground">Mode</h3>
                     <ModeSwitcher />
                     <DropdownMenu>
@@ -2896,6 +2896,65 @@ export default function Home() {
                   )}
                   </div>
                 </div>
+
+                {/* RIGHT RAIL (xl+ only): Mode + Tools — keeps the Q&A column clean */}
+                <aside className="hidden xl:flex w-[360px] shrink-0 flex-col border rounded-lg bg-card overflow-y-auto" data-testid="knowledge-tools-rail">
+                  <div className="px-3 py-2 border-b bg-muted/30">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mode &amp; Tools</div>
+                  </div>
+                  <div className="p-3 space-y-4">
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-1.5">Mode</div>
+                      <ModeSwitcher />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-1.5">Workspace</div>
+                      <div className="space-y-1.5">
+                        <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => setShowMobileWorkspacePanel(true)} data-testid="rail-workspace-stats">
+                          <BarChart3 className="w-4 h-4" /> Workspace Stats
+                        </Button>
+                        {isAuthenticated && verticalMode === "students" && (
+                          <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => setStudyDashboardExpanded(true)} data-testid="rail-study-fitness">
+                            <Activity className="w-4 h-4" /> Study Fitness
+                          </Button>
+                        )}
+                        {isAuthenticated && verticalMode === "educators" && (
+                          <Button variant="outline" size="sm" className="w-full justify-start gap-2" asChild data-testid="rail-educator-dashboard">
+                            <a href="/educator-dashboard"><GraduationCap className="w-4 h-4" /> Educator Dashboard</a>
+                          </Button>
+                        )}
+                        {viewPrefs.showUsageDisplay && (
+                          <Button variant="outline" size="sm" className="w-full justify-start gap-2" onClick={() => setShowMobileWorkspacePanel(true)} data-testid="rail-usage">
+                            <Activity className="w-4 h-4" /> Usage
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-1.5">Threads</div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start gap-2"
+                        data-testid="rail-recent-threads"
+                        onClick={() => {
+                          const threadsSection = document.querySelector('[data-testid="section-threads-desktop"]');
+                          if (threadsSection) {
+                            const trigger = threadsSection.querySelector('[data-testid="button-toggle-threads-desktop"]') as HTMLElement | null;
+                            if (trigger && !trigger.closest('[data-state="open"]')) trigger.click();
+                            threadsSection.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }
+                        }}
+                      >
+                        <MessagesSquare className="w-4 h-4" /> Recent Threads
+                      </Button>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-1.5">Share</div>
+                      <ShareButtons showLabel={true} className="flex-row items-center" />
+                    </div>
+                  </div>
+                </aside>
               </div>
 
 
