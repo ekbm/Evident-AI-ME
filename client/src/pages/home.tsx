@@ -2348,7 +2348,7 @@ export default function Home() {
                 );
               })()}
               {/* Mobile/tablet: Upload & Manage + My Sources + Org Connectors boxes */}
-              <div className="lg:hidden mb-3 space-y-2">
+              <div className="md:hidden mb-3 space-y-2">
                 <div className={`p-2.5 rounded-lg border ${hasReadySelectedAssets ? 'bg-cyan-50/50 dark:bg-cyan-950/20 border-cyan-500/30' : 'bg-card'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <button
@@ -2437,7 +2437,7 @@ export default function Home() {
 
               <div className="flex gap-4">
                 {/* Selected documents sidebar - desktop */}
-                <div className="hidden lg:flex flex-col w-56 xl:w-64 shrink-0 border rounded-lg bg-card overflow-hidden h-[calc(100vh-8rem)]">
+                <div className="hidden md:flex flex-col w-44 lg:w-56 xl:w-64 shrink-0 border rounded-lg bg-card overflow-hidden h-[calc(100vh-8rem)]">
                   <div className="p-3 border-b space-y-2">
                     <h3 className="text-sm font-semibold flex items-center gap-1.5" data-testid="text-selected-docs-heading">
                       <FileText className="w-3.5 h-3.5 text-primary" />
@@ -2565,9 +2565,9 @@ export default function Home() {
               <LimitWarningBanner />
 
               {/* === DESKTOP: Two-column workspace layout === */}
-              <div className="hidden lg:flex gap-3" data-testid="knowledge-workspace-desktop">
+              <div className="hidden md:flex gap-3" data-testid="knowledge-workspace-desktop">
                 {/* LEFT: Upload + Documents + FAQ (same layout as mobile) */}
-                <div className="w-[24rem] xl:w-[28rem] shrink-0 border rounded-lg bg-card overflow-y-auto flex flex-col">
+                <div className="w-72 lg:w-[24rem] xl:w-[28rem] shrink-0 border rounded-lg bg-card overflow-y-auto flex flex-col">
                   {allAssets && allAssets.length > 0 && (
                     <div className="mx-3 mt-3 mb-1">
                       <SelectedDocumentsBox
@@ -2901,7 +2901,7 @@ export default function Home() {
 
 
               {/* === MOBILE: Compact stacked layout === */}
-              <div className="lg:hidden space-y-3" data-testid="knowledge-workspace-mobile">
+              <div className="md:hidden space-y-3" data-testid="knowledge-workspace-mobile">
                 {/* Mode + Quick Actions row */}
                 <div className="flex items-center gap-2">
                   <ModeSwitcher />
