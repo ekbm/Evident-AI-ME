@@ -1487,7 +1487,7 @@ export function UploadSection({
 
           {/* Collapsed Options */}
           {showMoreUploadOptions && (
-            <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="w-full grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
               {/* Camera / Scan */}
               <div
                 className={`
