@@ -284,8 +284,8 @@ export function formatConfidenceMessage(confidenceLevel: "high" | "medium" | "lo
     case "high":
       return "";
     case "medium":
-      return "Based on available information in your documents:";
+      return "";
     case "low":
-      return "I found limited relevant information. Here's what I could determine:";
+      return "I found only limited relevant information for this question. Here's what I could determine:";
   }
 }

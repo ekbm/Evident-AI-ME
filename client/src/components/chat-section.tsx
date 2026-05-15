@@ -5738,32 +5738,41 @@ function MessageBubble({ message, questionText, externalTrigger, onExternalTrigg
           </p>
         ) : (
           <div className="space-y-3">
-            <div className="mb-2">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <FileText className="w-3 h-3 text-primary/70" />
-                <span className="text-[10px] font-medium text-primary/70 uppercase tracking-wide">From your documents</span>
-              </div>
-              {message.evidencePreview && message.evidencePreview.length > 0 && (() => {
-                const uniqueDocs = Array.from(new Set(message.evidencePreview.map(e => (e.sourceRef || '').split(':')[0]).filter(Boolean)));
-                return (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {uniqueDocs.slice(0, 3).map((docName, i) => (
-                      <span 
-                        key={i}
-                        className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary/80 border border-primary/20"
-                      >
-                        {docName.length > 30 ? docName.slice(0, 30) + '...' : docName}
-                      </span>
-                    ))}
-                    {uniqueDocs.length > 3 && (
-                      <span className="text-[9px] text-muted-foreground">
-                        +{uniqueDocs.length - 3} more
-                      </span>
-                    )}
+            {(() => {
+              const uniqueDocs = message.evidencePreview && message.evidencePreview.length > 0
+                ? Array.from(new Set(message.evidencePreview.map(e => (e.sourceRef || '').split(':')[0]).filter(Boolean)))
+                : [];
+              const hasCitations = (message.citations && message.citations.length > 0) || uniqueDocs.length > 0;
+              if (!hasCitations) return null;
+              return (
+                <div className="mb-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <FileText className="w-3 h-3 text-primary/70" />
+                    <span className="text-[10px] font-medium text-primary/70 uppercase tracking-wide">
+                      {uniqueDocs.length > 0 ? `Sourced from ${uniqueDocs.length === 1 ? 'this document' : 'these documents'}` : 'From your documents'}
+                    </span>
                   </div>
-                );
-              })()}
-            </div>
+                  {uniqueDocs.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {uniqueDocs.slice(0, 3).map((docName, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary/80 border border-primary/20"
+                          data-testid={`chip-source-doc-${i}`}
+                        >
+                          {docName.length > 30 ? docName.slice(0, 30) + '...' : docName}
+                        </span>
+                      ))}
+                      {uniqueDocs.length > 3 && (
+                        <span className="text-[9px] text-muted-foreground">
+                          +{uniqueDocs.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <FormattedAnswer content={cleanContent} onCitationClick={handleCitationClick} standardCitations={message.standardCitations} />
             {!isQuestion && message.pendingDocumentSelection && message.discoveredDocuments && message.discoveredDocuments.length > 0 && (
               <DiscoveredDocsPicker
