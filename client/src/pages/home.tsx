@@ -2567,7 +2567,7 @@ export default function Home() {
               {/* === DESKTOP: Two-column workspace layout === */}
               <div className="hidden md:flex gap-3" data-testid="knowledge-workspace-desktop">
                 {/* LEFT: Upload + Documents + FAQ (same layout as mobile) */}
-                <div className="w-72 lg:w-[24rem] xl:w-[380px] shrink-0 border rounded-lg bg-card overflow-y-auto flex flex-col">
+                <div className="w-72 lg:w-[20rem] xl:w-[380px] shrink-0 border rounded-lg bg-card overflow-y-auto flex flex-col">
                   {allAssets && allAssets.length > 0 && (
                     <div className="mx-3 mt-3 mb-1">
                       <SelectedDocumentsBox
@@ -2747,7 +2747,7 @@ export default function Home() {
 
                 {/* MIDDLE: Full Ask Evi (Mode header hidden at xl, lives in right rail) */}
                 <div className="flex-1 min-w-0 flex flex-col">
-                  <div className="xl:hidden shrink-0 px-3 py-2 border-b flex items-center gap-3 bg-card rounded-t-lg border border-b-0">
+                  <div className="lg:hidden shrink-0 px-3 py-2 border-b flex items-center gap-3 bg-card rounded-t-lg border border-b-0">
                     <h3 className="text-sm font-semibold text-muted-foreground">Mode</h3>
                     <ModeSwitcher />
                     <DropdownMenu>
@@ -2897,8 +2897,8 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* RIGHT RAIL (xl+ only): Mode + Tools — keeps the Q&A column clean */}
-                <aside className="hidden xl:flex w-[360px] shrink-0 flex-col border rounded-lg bg-card overflow-y-auto" data-testid="knowledge-tools-rail">
+                {/* RIGHT RAIL (lg+ only): Mode + Tools — keeps the Q&A column clean */}
+                <aside className="hidden lg:flex w-[300px] xl:w-[360px] shrink-0 flex-col border rounded-lg bg-card overflow-y-auto" data-testid="knowledge-tools-rail">
                   <div className="px-3 py-2 border-b bg-muted/30">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mode &amp; Tools</div>
                   </div>
