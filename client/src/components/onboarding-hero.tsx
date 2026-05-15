@@ -1,31 +1,27 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   Sparkles,
   Upload,
-  FileText,
-  Loader2,
   MessageSquare,
-  Wand2,
-  GraduationCap,
-  Scale,
   FileBadge,
   X,
   Brain,
   ListChecks,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
-type LoadedSample = {
-  assetId: string;
-  filename: string;
-  suggestedQuestions: string[];
-};
 
 type DocType = "cv" | "study" | "policy" | "generic";
+
+// Platform-info starter questions. These intentionally have NO assetIds so the
+// chat backend routes them through the platform/account handler in server/rag.ts
+// — answers come from Evident's own knowledge, not from any uploaded documents.
+const PLATFORM_STARTER_QUESTIONS: string[] = [
+  "What can Evi do for me?",
+  "What kinds of files can I upload?",
+  "How do citations work?",
+  "Is my data private and secure?",
+  "How do I get started?",
+];
 
 function detectDocType(filename: string | undefined): DocType {
   if (!filename) return "generic";
@@ -57,12 +53,6 @@ type OnboardingHeroProps = {
   onOpenStudyQuiz?: () => void;
 };
 
-const SAMPLE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  "Sample Lecture — Photosynthesis.txt": GraduationCap,
-  "Sample Policy — Remote Work.txt": Scale,
-  "Sample CV — Jane Doe.txt": FileBadge,
-};
-
 function DismissButton({ onDismiss }: { onDismiss?: () => void }) {
   if (!onDismiss) return null;
   return (
@@ -88,34 +78,12 @@ export function OnboardingHero({
   onOpenCVBuilder,
   onOpenStudyQuiz,
 }: OnboardingHeroProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [loadedSamples, setLoadedSamples] = useState<LoadedSample[] | null>(null);
-
-  const loadSamplesMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/onboarding/load-samples", {});
-      return (await res.json()) as { samples: LoadedSample[] };
-    },
-    onSuccess: (data) => {
-      setLoadedSamples(data.samples);
-      queryClient.invalidateQueries({ queryKey: ["/api/assets"] });
-      toast({
-        title: "Samples ready",
-        description: `Added ${data.samples.length} sample documents. Pick a question below to try Evi.`,
-      });
-    },
-    onError: (err: any) => {
-      toast({
-        title: "Could not load samples",
-        description: err?.message || "Please try again",
-        variant: "destructive",
-      });
-    },
-  });
 
   // ── State A: brand new account, zero documents ────────────────────────────
-  if (!hasAnyDocuments && !loadedSamples) {
+  // Show platform-info questions (NOT sample documents). Each question is sent
+  // with assetIds=[] so the chat backend routes through the platform handler
+  // and answers from Evident's own knowledge — no document search.
+  if (!hasAnyDocuments) {
     return (
       <Card
         className="mb-4 p-5 sm:p-6 border-primary/20 bg-gradient-to-br from-cyan-50 via-white to-blue-50 dark:from-cyan-950/30 dark:via-slate-950 dark:to-blue-950/20"
@@ -127,95 +95,33 @@ export function OnboardingHero({
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-base sm:text-lg font-semibold text-foreground" data-testid="text-hero-title">
-              Try Evi in 5 seconds — no upload needed
+              Welcome to Evident — ask Evi anything
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              We'll add 3 sample documents (a lecture, a policy and a CV) to your workspace so you can see exactly what Evi does.
+              Curious how it works? Tap a question below. When you're ready, upload a document and Evi will answer with citations.
             </p>
           </div>
           <DismissButton onDismiss={onDismiss} />
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button
-            onClick={() => loadSamplesMutation.mutate()}
-            disabled={loadSamplesMutation.isPending}
-            className="flex-1"
-            data-testid="button-load-samples"
-          >
-            {loadSamplesMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Setting up samples…
-              </>
-            ) : (
-              <>
-                <Wand2 className="w-4 h-4 mr-2" />
-                Try Evi on samples
-              </>
-            )}
-          </Button>
-          <Button variant="outline" onClick={onUploadClick} className="flex-1" data-testid="button-upload-instead">
-            <Upload className="w-4 h-4 mr-2" />
-            Or upload your own
-          </Button>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {PLATFORM_STARTER_QUESTIONS.map((q, i) => (
+            <Button
+              key={i}
+              variant="outline"
+              size="sm"
+              onClick={() => onAsk(q, [])}
+              className="text-xs rounded-full font-normal"
+              data-testid={`button-platform-q-${i}`}
+            >
+              <MessageSquare className="w-3 h-3 mr-1.5 text-primary/70" />
+              {q}
+            </Button>
+          ))}
         </div>
-      </Card>
-    );
-  }
-
-  // ── State B: samples just loaded — show "ask one of these" cards ──────────
-  if (loadedSamples && loadedSamples.length > 0) {
-    return (
-      <Card
-        className="mb-4 p-4 sm:p-5 border-primary/30 bg-gradient-to-br from-cyan-50/70 to-blue-50/40 dark:from-cyan-950/30 dark:to-blue-950/20"
-        data-testid="onboarding-hero-samples"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground flex-1">Pick a question to try Evi</h3>
-          <DismissButton onDismiss={onDismiss} />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          {loadedSamples.map((s) => {
-            const Icon = SAMPLE_ICONS[s.filename] || FileText;
-            return (
-              <div
-                key={s.assetId}
-                className="rounded-lg border border-border bg-card p-3 flex flex-col"
-                data-testid={`sample-card-${s.assetId}`}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-xs font-medium text-foreground truncate">
-                    {s.filename.replace(/^Sample\s+/i, "").replace(/\.txt$/i, "")}
-                  </span>
-                </div>
-                <div className="space-y-1.5 mt-auto">
-                  {s.suggestedQuestions.map((q, i) => (
-                    <Button
-                      key={i}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onAsk(q, [s.assetId])}
-                      className="w-full justify-start h-auto py-1.5 px-2 text-[11px] leading-snug text-left whitespace-normal hover:bg-primary/10"
-                      data-testid={`button-sample-q-${s.assetId}-${i}`}
-                    >
-                      <MessageSquare className="w-3 h-3 mr-1.5 shrink-0 text-primary/70" />
-                      {q}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between">
-          <span className="text-[11px] text-muted-foreground">Ready when you are — upload your own anytime.</span>
-          <Button variant="ghost" size="sm" onClick={onUploadClick} className="text-xs h-7" data-testid="button-upload-from-samples">
-            <Upload className="w-3 h-3 mr-1.5" />
-            Upload your own
-          </Button>
-        </div>
+        <Button onClick={onUploadClick} className="w-full" data-testid="button-upload-instead">
+          <Upload className="w-4 h-4 mr-2" />
+          Upload your first document
+        </Button>
       </Card>
     );
   }

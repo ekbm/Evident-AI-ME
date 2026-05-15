@@ -2344,12 +2344,13 @@ export default function Home() {
                     firstDocumentName={firstDoc?.filename}
                     firstDocumentId={firstDoc?.id}
                     onAsk={(question, assetIds) => {
-                      // Don't mutate persistent selection — sample questions are
-                      // one-shot. We pass assetIds directly so this single chat
-                      // turn targets the sample without locking future turns.
+                      // Don't mutate persistent selection — onboarding questions are
+                      // one-shot. An explicitly-empty array (assetIds=[]) means
+                      // "no documents" and routes through the platform handler;
+                      // omitting assetIds falls back to the user's current selection.
                       chatMutation.mutate({
                         question,
-                        assetIds: assetIds && assetIds.length > 0 ? assetIds : selectedAssetIds,
+                        assetIds: assetIds !== undefined ? assetIds : selectedAssetIds,
                       } as any);
                     }}
                     onUploadClick={() => setShowMobileDocsPanel(true)}
