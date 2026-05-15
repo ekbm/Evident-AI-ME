@@ -1,6 +1,6 @@
 import { createAssetAsync, createChunkAsync, updateChunkEmbeddingAsync, updateAssetStatusAsync, getAssetsByOwnerIdAsync } from "./db";
 import { createEmbedding } from "./openai";
-import { pgDb } from "./db";
+import { db as pgDb } from "./db";
 import { pgAssets } from "@shared/models/auth";
 import { and, eq, sql as drizzleSql } from "drizzle-orm";
 
