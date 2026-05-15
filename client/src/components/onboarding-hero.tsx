@@ -295,9 +295,9 @@ export function OnboardingHero({
         title: "Ask Evi about your document",
         subtitle: "Tap a question to get started — Evi will cite the source.",
         questions: [
-          `What is "${cleanName}" about?`,
-          `Summarise the key points`,
-          `What are the most important details I should know?`,
+          `Give me a one-paragraph summary with the main takeaways`,
+          `What are the key facts, numbers or dates I should remember?`,
+          `What questions could someone ask to test my understanding of this?`,
         ],
       };
     }
