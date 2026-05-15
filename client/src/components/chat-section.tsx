@@ -214,6 +214,34 @@ function formatSourceRef(sourceRef: string, expanded: boolean = false): string {
   return sourceRef;
 }
 
+// Synthesize StandardCitation entries from evidencePreview when the API doesn't supply them.
+// This guarantees citation popovers always have source details (title, snippet, locator).
+function synthesizeCitations(
+  standardCitations: StandardCitation[] | undefined,
+  evidencePreview: Array<{ n: number; sourceRef: string; snippet: string; assetId?: string; chunkId?: string }> | undefined,
+): StandardCitation[] {
+  const haveStandard = standardCitations && standardCitations.length > 0;
+  if (haveStandard) return standardCitations!;
+  if (!evidencePreview || evidencePreview.length === 0) return [];
+  return evidencePreview.map((e) => {
+    const refParts = (e.sourceRef || '').split(':');
+    const docName = refParts[0] || 'Source';
+    // Try to detect a page locator like "page 12" or "p.12" inside the ref
+    const pageMatch = (e.sourceRef || '').match(/(?:page|p\.?)\s*(\d+)/i);
+    return {
+      id: e.chunkId || `${e.n}`,
+      n: e.n,
+      sourceType: 'document',
+      title: docName,
+      fileId: e.assetId,
+      locator: pageMatch
+        ? { type: 'pdf', page: parseInt(pageMatch[1], 10) } as any
+        : { type: 'chunk', chunkIndex: 0 } as any,
+      snippet: e.snippet || '',
+    } as StandardCitation;
+  });
+}
+
 function CitationBadge({ 
   num, 
   citation, 
@@ -2223,20 +2251,69 @@ export function ChatSection({
                             </span>
                           </div>
                         )}
-                        <CollapsibleAnswer
-                          content={extractFollowUpQuestions(msg.content).cleanContent}
-                          isLatest={idx === messages.length - 1}
-                          forceCollapsed={chatOnly}
-                          standardCitations={msg.standardCitations}
-                          onCitationClick={(num) => {
-                            const cite = msg.standardCitations?.find(c => c.n === num);
-                            const ref = cite?.sourceRef || cite?.title;
-                            if (ref) {
-                              const docName = ref.split(':')[0];
-                              toast({ title: `Source [${num}]`, description: docName });
-                            }
-                          }}
-                        />
+                        {(() => {
+                          const effectiveCitations = synthesizeCitations(msg.standardCitations, msg.evidencePreview);
+                          return (
+                            <CollapsibleAnswer
+                              content={extractFollowUpQuestions(msg.content).cleanContent}
+                              isLatest={idx === messages.length - 1}
+                              forceCollapsed={chatOnly}
+                              standardCitations={effectiveCitations}
+                              onCitationClick={(num) => {
+                                const cite = effectiveCitations.find(c => c.n === num);
+                                const docName = cite?.title || (cite as any)?.sourceRef?.split(':')[0];
+                                const snippet = cite?.snippet ? `"${cite.snippet.slice(0, 140)}${cite.snippet.length > 140 ? '…' : ''}"` : 'Open the answer above to see this source.';
+                                toast({
+                                  title: docName ? `Source [${num}] · ${docName}` : `Source [${num}]`,
+                                  description: snippet,
+                                });
+                              }}
+                            />
+                          );
+                        })()}
+                        {(() => {
+                          const sourceDocs: string[] = [];
+                          if (msg.evidencePreview && msg.evidencePreview.length > 0) {
+                            msg.evidencePreview.forEach(e => {
+                              const name = (e.sourceRef || '').split(':')[0];
+                              if (name && !sourceDocs.includes(name)) sourceDocs.push(name);
+                            });
+                          } else if (msg.standardCitations && msg.standardCitations.length > 0) {
+                            msg.standardCitations.forEach(c => {
+                              const name = (c.sourceRef || c.title || '').split(':')[0];
+                              if (name && !sourceDocs.includes(name)) sourceDocs.push(name);
+                            });
+                          }
+                          if (sourceDocs.length === 0) return null;
+                          const totalCites = msg.evidencePreview?.length || msg.standardCitations?.length || 0;
+                          return (
+                            <div className="mt-2 pt-2 border-t border-border/40" data-testid={`chat-sources-${idx}`}>
+                              <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                                <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                                <span className="text-muted-foreground font-medium">
+                                  Sourced from {sourceDocs.length === 1 ? 'this document' : `these ${sourceDocs.length} documents`}:
+                                </span>
+                                {sourceDocs.slice(0, 4).map((doc, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => toast({ title: 'Source document', description: doc })}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-900/60 transition-colors max-w-[200px] truncate"
+                                    data-testid={`chip-source-${idx}-${i}`}
+                                    title={doc}
+                                  >
+                                    <span className="truncate">{doc}</span>
+                                  </button>
+                                ))}
+                                {sourceDocs.length > 4 && (
+                                  <span className="text-muted-foreground">+{sourceDocs.length - 4} more</span>
+                                )}
+                                {totalCites > 0 && (
+                                  <span className="text-muted-foreground/70 ml-auto">{totalCites} citation{totalCites !== 1 ? 's' : ''}</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {!msg.isCompareMode && msg.versionUsed && (isAdmin || userPlan === "premium_org") && (
                           <div className="mt-1.5 flex items-center gap-1" data-testid={`badge-version-${msg.versionUsed}`}>
                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${
@@ -4824,7 +4901,7 @@ export function ChatSection({
                           <span className="text-xs font-medium text-muted-foreground">Evi</span>
                         </div>
                         <div className="text-sm leading-relaxed sm:text-base sm:leading-relaxed pl-8">
-                          <FormattedAnswer content={focusClean} standardCitations={pair.answer.standardCitations} />
+                          <FormattedAnswer content={focusClean} standardCitations={synthesizeCitations(pair.answer.standardCitations, pair.answer.evidencePreview)} />
                         </div>
 
                         {isLast && focusFollowUps.length > 0 && (
@@ -5786,7 +5863,7 @@ function MessageBubble({ message, questionText, externalTrigger, onExternalTrigg
                 </div>
               );
             })()}
-            <FormattedAnswer content={cleanContent} onCitationClick={handleCitationClick} standardCitations={message.standardCitations} />
+            <FormattedAnswer content={cleanContent} onCitationClick={handleCitationClick} standardCitations={synthesizeCitations(message.standardCitations, message.evidencePreview)} />
             {!isQuestion && message.pendingDocumentSelection && message.discoveredDocuments && message.discoveredDocuments.length > 0 && (
               <DiscoveredDocsPicker
                 docs={message.discoveredDocuments}
@@ -6794,7 +6871,7 @@ function MessageBubble({ message, questionText, externalTrigger, onExternalTrigg
               </div>
               
               <div className="text-base leading-relaxed sm:text-lg sm:leading-relaxed">
-                <FormattedAnswer content={cleanContent} onCitationClick={handleCitationClick} standardCitations={message.standardCitations} />
+                <FormattedAnswer content={cleanContent} onCitationClick={handleCitationClick} standardCitations={synthesizeCitations(message.standardCitations, message.evidencePreview)} />
               </div>
 
               {followUps.length > 0 && onAsk && (
