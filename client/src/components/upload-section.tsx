@@ -659,7 +659,7 @@ export function UploadSection({
   });
   const [submittingOneDriveInterest, setSubmittingOneDriveInterest] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
-  const [listHeight, setListHeight] = useState(250);
+  const [listHeight, setListHeight] = useState(520);
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartY = useRef(0);
   const resizeStartHeight = useRef(0);
@@ -2657,7 +2657,7 @@ function AssetListItem({
           <FileTypeIcon mime={asset.mime} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-xs truncate" data-testid="text-asset-filename">
+          <p className="font-medium text-xs leading-snug break-words" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }} data-testid="text-asset-filename">
             {(asset as any).displayName || asset.filename}
           </p>
           <div className="flex items-center gap-1.5">
