@@ -5948,6 +5948,26 @@ function MessageBubble({ message, questionText, externalTrigger, onExternalTrigg
                 <p className="text-xs">Compare with another brand or website</p>
               </TooltipContent>
             </Tooltip>
+
+            {message.evidencePreview && message.evidencePreview.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFocusModeOpen(true)}
+                    className="h-7 text-[11px] gap-1.5 transition-all bg-gradient-to-r from-sky-50 to-blue-50 dark:from-sky-950/50 dark:to-blue-950/50 border-sky-200 dark:border-sky-800 hover:from-sky-100 hover:to-blue-100 dark:hover:from-sky-900/50 dark:hover:to-blue-900/50 hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-sm"
+                    data-testid="button-view-sources"
+                  >
+                    <BookOpen className="w-3 h-3 text-sky-500" />
+                    View {message.evidencePreview.length} {message.evidencePreview.length === 1 ? 'source' : 'sources'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">See the document snippets Evi used to answer</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
 
           {showCompareInput && (
