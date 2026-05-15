@@ -2294,7 +2294,7 @@ export default function Home() {
 
 
       {(isAuthenticated && !showLandingView) && (
-        <main className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-8">
+        <main className="max-w-[1700px] mx-auto px-4 md:px-6 py-3 md:py-8">
           
           <Tabs ref={tabsRef} value={activeTab} onValueChange={setActiveTab} className="mb-2 md:mb-4">
             <TabsList className={`w-full grid ${canAccessHealth ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} hidden sm:grid h-auto min-h-[3rem] mb-4`} data-testid="tabs-main">
@@ -2315,7 +2315,7 @@ export default function Home() {
             </TabsList>
             
             {/* ===== CHAT WITH EVI TAB ===== */}
-            <TabsContent value="chat" className="mt-0 overflow-hidden">
+            <TabsContent value="chat" className="mt-0 overflow-hidden max-w-7xl mx-auto w-full">
               {/* Onboarding hero — shown to brand new users (0 docs) and to users
                   who have docs but haven't asked anything yet. Disappears as soon
                   as they start chatting with their own content. */}
