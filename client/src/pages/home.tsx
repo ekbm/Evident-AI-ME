@@ -212,6 +212,17 @@ export default function Home() {
   const [ksNudgeDismissed, setKsNudgeDismissed] = useState(false);
   const [showCVBuilderSheet, setShowCVBuilderSheet] = useState(false);
   const [cvBuilderExpanded, setCvBuilderExpanded] = useState(false);
+  const [onboardingHeroDismissed, setOnboardingHeroDismissed] = useState<boolean>(() => {
+    try { return localStorage.getItem("evident_onboarding_hero_dismissed") === "true"; } catch { return false; }
+  });
+  const dismissOnboardingHero = () => {
+    setOnboardingHeroDismissed(true);
+    try { localStorage.setItem("evident_onboarding_hero_dismissed", "true"); } catch {}
+  };
+  const reopenOnboardingHero = () => {
+    setOnboardingHeroDismissed(false);
+    try { localStorage.removeItem("evident_onboarding_hero_dismissed"); } catch {}
+  };
 
   useEffect(() => {
     const openStudyFitness = sessionStorage.getItem("evident_open_study_fitness");
@@ -2309,6 +2320,7 @@ export default function Home() {
                   who have docs but haven't asked anything yet. Disappears as soon
                   as they start chatting with their own content. */}
               {(() => {
+                if (onboardingHeroDismissed) return null;
                 const hasAnyDocuments = readyAssets.length > 0;
                 const hasAskedAnything = messages.length > 0;
                 if (hasAnyDocuments && hasAskedAnything) return null;
@@ -2329,6 +2341,9 @@ export default function Home() {
                       } as any);
                     }}
                     onUploadClick={() => setShowMobileDocsPanel(true)}
+                    onDismiss={dismissOnboardingHero}
+                    onOpenCVBuilder={isStudentMode ? () => setShowCVBuilderSheet(true) : undefined}
+                    onOpenStudyQuiz={isStudentMode ? () => { setExamPrepEnabled(true); setShowExamPrepSheet(true); } : undefined}
                   />
                 );
               })()}
@@ -2530,6 +2545,19 @@ export default function Home() {
                   />
                 </div>
               </div>
+              {/* Floating "Tips" pill — only shown when the user dismissed
+                  the onboarding hero. One-tap to bring it back. */}
+              {onboardingHeroDismissed && (
+                <button
+                  onClick={reopenOnboardingHero}
+                  className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 flex items-center gap-1.5 rounded-full bg-primary text-primary-foreground px-3.5 py-2 text-xs font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                  data-testid="button-reopen-onboarding-hero"
+                  aria-label="Show tips"
+                >
+                  <Lightbulb className="w-3.5 h-3.5" />
+                  Tips
+                </button>
+              )}
             </TabsContent>
             
             {/* ===== KNOWLEDGE SPACE TAB ===== */}
