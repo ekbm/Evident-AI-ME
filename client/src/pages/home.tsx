@@ -2907,6 +2907,65 @@ export default function Home() {
                       <div className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-1.5">Mode</div>
                       <ModeSwitcher />
                     </div>
+                    {(verticalMode === "students" || verticalMode === "educators" || verticalMode === "finance" || verticalMode === "legal") && (
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-1.5">Tools for this mode</div>
+                        <div className="space-y-1.5">
+                          {(verticalMode === "students" || verticalMode === "educators") && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full justify-start gap-2 border-cyan-300/60 hover:bg-cyan-50 dark:border-cyan-800/50 dark:hover:bg-cyan-950/30"
+                                onClick={() => { setExamPrepEnabled(true); setShowExamPrepSheet(true); }}
+                                data-testid="rail-tool-exam-prep"
+                              >
+                                <GraduationCap className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                                <span className="flex-1 text-left">Exam Prep</span>
+                                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full justify-start gap-2 border-blue-300/60 hover:bg-blue-50 dark:border-blue-800/50 dark:hover:bg-blue-950/30"
+                                onClick={() => setShowCVBuilderSheet(true)}
+                                data-testid="rail-tool-cv-builder"
+                              >
+                                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                <span className="flex-1 text-left">CV Builder</span>
+                                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                              </Button>
+                            </>
+                          )}
+                          {verticalMode === "finance" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full justify-start gap-2 border-emerald-300/60 hover:bg-emerald-50 dark:border-emerald-800/50 dark:hover:bg-emerald-950/30"
+                              onClick={() => { setFinanceQueryEnabled(true); setShowFinanceQuerySheet(true); }}
+                              data-testid="rail-tool-finance-query"
+                            >
+                              <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                              <span className="flex-1 text-left">Finance Query</span>
+                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                            </Button>
+                          )}
+                          {verticalMode === "legal" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full justify-start gap-2 border-purple-300/60 hover:bg-purple-50 dark:border-purple-800/50 dark:hover:bg-purple-950/30"
+                              onClick={() => { handleAsk?.("Extract all obligations from the selected documents as a structured checklist."); }}
+                              data-testid="rail-tool-extract-obligations"
+                            >
+                              <Scale className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                              <span className="flex-1 text-left">Extract Obligations</span>
+                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <div>
                       <div className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-1.5">Workspace</div>
                       <div className="space-y-1.5">
