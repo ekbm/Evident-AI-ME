@@ -2298,16 +2298,28 @@ export default function Home() {
           
           <Tabs ref={tabsRef} value={activeTab} onValueChange={setActiveTab} className="mb-2 md:mb-4">
             <TabsList className={`w-full grid ${canAccessHealth ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} hidden sm:grid h-auto min-h-[3rem] mb-4`} data-testid="tabs-main">
-              <TabsTrigger value="chat" className="gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium py-2 whitespace-normal text-center hidden sm:flex" data-testid="tab-chat">
+              <TabsTrigger
+                value="chat"
+                className="gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold py-2 whitespace-normal text-center hidden sm:flex border-2 border-cyan-300/60 bg-cyan-50 text-cyan-900 hover:bg-cyan-100 dark:border-cyan-700/60 dark:bg-cyan-950/40 dark:text-cyan-100 dark:hover:bg-cyan-900/40 data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:border-cyan-600 data-[state=active]:shadow-md"
+                data-testid="tab-chat"
+              >
                 <MessageSquarePlus className="w-4 h-4 shrink-0" />
                 <span>Chat with Evi</span>
               </TabsTrigger>
-              <TabsTrigger value="knowledge" className="gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium py-2 whitespace-normal text-center hidden sm:flex" data-testid="tab-knowledge">
+              <TabsTrigger
+                value="knowledge"
+                className="gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold py-2 whitespace-normal text-center hidden sm:flex border-2 border-amber-300/60 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/40 data-[state=active]:bg-gradient-to-br data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:border-amber-600 data-[state=active]:shadow-md"
+                data-testid="tab-knowledge"
+              >
                 <FolderKanban className="w-4 h-4 shrink-0" />
                 <span>Knowledge Space</span>
               </TabsTrigger>
               {canAccessHealth && (
-                <TabsTrigger value="health" className="gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium py-2 whitespace-normal text-center hidden sm:flex" data-testid="tab-health">
+                <TabsTrigger
+                  value="health"
+                  className="gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold py-2 whitespace-normal text-center hidden sm:flex border-2 border-emerald-300/60 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/40 data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:border-emerald-600 data-[state=active]:shadow-md"
+                  data-testid="tab-health"
+                >
                   <HeartPulse className="w-4 h-4 shrink-0" />
                   <span>Knowledge Health</span>
                 </TabsTrigger>
@@ -2837,6 +2849,7 @@ export default function Home() {
                     financeQueryEnabled={financeQueryEnabled}
                     onFinanceQueryToggle={(enabled) => { setFinanceQueryEnabled(enabled); if (enabled) setShowFinanceQuerySheet(true); }}
                     onOpenFinanceQuery={() => setShowFinanceQuerySheet(true)}
+                    hideModeToolsAtLg={true}
                     title="Ask Evi"
                     onChatWithEvi={() => { setActiveTab("chat"); setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior }), 0); }}
                     onOpenThreads={() => {

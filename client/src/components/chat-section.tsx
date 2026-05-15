@@ -1216,6 +1216,7 @@ interface ChatSectionProps {
   financeQueryEnabled?: boolean;
   onFinanceQueryToggle?: (enabled: boolean) => void;
   onOpenFinanceQuery?: () => void;
+  hideModeToolsAtLg?: boolean;
   onOpenThreads?: () => void;
   isSearchingAllDocs?: boolean;
   totalDocCount?: number;
@@ -1285,6 +1286,7 @@ export function ChatSection({
   financeQueryEnabled = false,
   onFinanceQueryToggle,
   onOpenFinanceQuery,
+  hideModeToolsAtLg = false,
   onOpenThreads,
   isSearchingAllDocs = false,
   totalDocCount = 0,
@@ -2664,7 +2666,7 @@ export function ChatSection({
               </div>
             )}
             {(intentMode === "study" || intentMode === "educator") && onExamPrepToggle && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 dark:bg-slate-800/80">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 dark:bg-slate-800/80 ${hideModeToolsAtLg ? 'lg:hidden' : ''}`}>
                 <div className="flex items-center gap-1.5">
                   <GraduationCap className={`w-4 h-4 ${examPrepEnabled ? 'text-cyan-400' : 'text-slate-400'}`} />
                   <span className={`text-xs font-medium ${examPrepEnabled ? 'text-cyan-300' : 'text-slate-400'}`}>
@@ -2693,7 +2695,7 @@ export function ChatSection({
               </div>
             )}
             {(intentMode === "study" || intentMode === "educator") && onOpenCVBuilder && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 dark:bg-slate-800/80">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 dark:bg-slate-800/80 ${hideModeToolsAtLg ? 'lg:hidden' : ''}`}>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -2707,7 +2709,7 @@ export function ChatSection({
               </div>
             )}
             {intentMode === "finance" && onFinanceQueryToggle && (
-              <div className="space-y-1">
+              <div className={`space-y-1 ${hideModeToolsAtLg ? 'lg:hidden' : ''}`}>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 dark:bg-slate-800/80">
                   <div className="flex items-center gap-1.5">
                     <DollarSign className={`w-4 h-4 ${financeQueryEnabled ? 'text-emerald-400' : 'text-slate-400'}`} />
