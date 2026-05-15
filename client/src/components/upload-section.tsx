@@ -1662,15 +1662,15 @@ export function UploadSection({
         {assets.length > 0 && (
           <div className="space-y-3">
             
-            <div className="flex items-center justify-between px-1 py-1.5">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <FileText className="w-3.5 h-3.5" />
-                <span className="font-medium">{assets.length} document{assets.length !== 1 ? 's' : ''}</span>
+            <div className="flex flex-wrap items-center justify-between gap-y-1.5 gap-x-2 px-1 py-1.5">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+                <span className="font-medium whitespace-nowrap">{assets.length} doc{assets.length !== 1 ? 's' : ''}</span>
                 {selectedAssetIds.length > 0 && (
-                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{selectedAssetIds.length} selected</Badge>
+                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5 whitespace-nowrap">{selectedAssetIds.length} selected</Badge>
                 )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-wrap justify-end">
                 {onSelectAll && assets.length > 0 && (
                   <Button
                     variant="ghost"
