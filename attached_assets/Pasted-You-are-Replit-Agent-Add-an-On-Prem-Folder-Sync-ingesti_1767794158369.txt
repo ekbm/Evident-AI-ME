@@ -1,0 +1,102 @@
+You are Replit Agent. Add an “On-Prem Folder Sync” ingestion endpoint and admin UI in Evident to support a future Sync Agent that reads NAS/SMB folders inside a company network.
+
+GOAL
+Support enterprise daily ingestion from NAS/SMB via an on-prem “Sync Agent”:
+- Evident provides secure endpoints + audit logs + connector management.
+- The Agent (built later) will run on a Windows/Linux machine that has access to the SMB share and will upload files to Evident.
+
+IMPORTANT
+- Read-only ingestion only.
+- No external references/web data.
+- Snapshot-based (daily by default).
+- Must log every run and every file ingested.
+
+BACKEND (Node + Express)
+Add endpoints:
+
+1) Create connector
+POST /api/connectors
+Body:
+{ workspaceId, type: "onprem_agent", name, schedule: { mode:"daily", time:"02:00" }, rules:{ includeExt:["pdf","docx","txt","csv","png","jpg"], exclude:["exe","zip"] } }
+Admin only.
+
+2) Issue agent token (shared secret)
+POST /api/connectors/:id/token
+Returns:
+{ agentToken }  (store hashed in DB)
+
+3) Agent ingestion endpoint (core)
+POST /api/connectors/:id/ingest
+Headers:
+- X-Agent-Token: <token>
+Body: multipart/form-data:
+- files[] (one or many)
+- metadata JSON per file:
+  { originalPath, modifiedAt, sizeBytes, sha256 }
+
+Behavior:
+- Validate token
+- For each file:
+  - Deduplicate using sha256 (avoid re-ingesting same content)
+  - Store as asset (source_type="connector", connector_id linked)
+  - Extract text/OCR/transcribe as needed
+  - Chunk + embed -> internal-only chunks
+- Create a connector_run record:
+  - started_at, finished_at
+  - files_seen, files_ingested
+  - status
+
+4) Manual run / status
+POST /api/connectors/:id/run (admin only) -> triggers a “request sync” flag for the agent (MVP can just mark requested_at)
+GET /api/connectors/:id/status -> last_run, last_error, counts
+
+DATABASE (SQLite)
+Add/extend tables:
+connectors:
+- id, workspace_id, type="onprem_agent", name, status
+- schedule_json, rules_json
+- token_hash
+- last_run, last_error
+- created_at
+
+connector_runs:
+- id, connector_id, started_at, finished_at, status
+- files_seen, files_ingested, error
+
+assets: add fields if missing:
+- connector_id, source_type="connector"
+- original_path, sha256, modified_at
+
+audit_log:
+- log connector_created, token_issued, ingest_run, file_ingested
+
+FRONTEND (React)
+Add Premium Org admin pages:
+
+/connectors
+- Card: “On-Prem Folder Sync (NAS/SMB)”
+- Create connector form: name, schedule time, include/exclude file types
+- After creation show:
+  - “Agent Token” (show once with copy button)
+  - “Agent setup instructions” panel
+  - Status panel: last sync time, files ingested, errors
+- Logs table: list connector_runs
+
+AGENT SETUP INSTRUCTIONS (UI COPY)
+Show these steps:
+1) Install the Evident Sync Agent on a machine that can access the SMB share.
+2) Configure:
+   - SMB paths (e.g., \\SERVER\Share\Folder)
+   - Connector ID
+   - Agent Token
+   - Evident server URL
+3) Run daily snapshot sync.
+Note: “Read-only. Only outbound HTTPS required.”
+
+DELIVERABLE
+Implement the connector type “onprem_agent” end-to-end:
+- Admin can create it
+- Token can be generated and stored securely (hash)
+- Agent ingestion endpoint works (multipart)
+- Ingestion creates assets + chunks + embeddings
+- Runs and files are logged and visible in UI

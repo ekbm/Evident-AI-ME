@@ -1,0 +1,120 @@
+Add Personal Subscriptions (card payments) to Evident using Stripe Checkout (subscriptions) + Webhooks + Entitlements.
+
+STACK
+- React 18 + TypeScript + Vite + Tailwind + shadcn/ui
+- Backend Node/Express + TypeScript
+- Postgres + Drizzle ORM
+- Auth exists (or stub): each user has an id/email
+
+GOAL
+Implement self-serve personal subscriptions with Stripe-hosted Checkout (mode=subscription), webhook-driven entitlement updates, and a Billing page in the React app.
+
+REQUIREMENTS
+
+1) STRIPE SETUP (assume I will add env vars)
+Backend env vars:
+- STRIPE_SECRET_KEY
+- STRIPE_WEBHOOK_SECRET
+- STRIPE_PRICE_PRO (price id)
+- STRIPE_PRICE_PRO_PLUS (price id)
+- APP_BASE_URL (e.g., https://<replit-url>)
+
+2) DB SCHEMA (Drizzle)
+Add tables/fields:
+
+users:
+- stripe_customer_id (nullable)
+
+subscriptions:
+- id (uuid)
+- user_id (uuid)
+- stripe_subscription_id (string, unique)
+- stripe_customer_id (string)
+- status (string)
+- price_id (string)
+- plan_key (string)  // free | pro | pro_plus
+- current_period_end (timestamp, nullable)
+- created_at, updated_at
+
+entitlements:
+- user_id (uuid, unique)
+- plan_key (string)
+- device_limit (int)  // free=0, pro=1, pro_plus=3
+- max_indexed_gb (int nullable) // optional
+- updated_at
+
+Seed default entitlement for all users: plan_key=free, device_limit=0.
+
+3) BACKEND ENDPOINTS
+- POST /api/billing/checkout
+  Body: { plan: "pro" | "pro_plus" }
+  Auth required.
+  Server:
+   - ensure Stripe customer exists for user (create if missing; store stripe_customer_id)
+   - create Stripe Checkout Session with:
+       mode: "subscription"
+       line_items: [{ price: STRIPE_PRICE_PRO or PRO_PLUS, quantity: 1 }]
+       success_url: APP_BASE_URL + "/billing/success?session_id={CHECKOUT_SESSION_ID}"
+       cancel_url: APP_BASE_URL + "/billing"
+   - return { url: session.url }
+
+- POST /api/billing/webhook
+  Raw body required.
+  Verify signature using STRIPE_WEBHOOK_SECRET.
+  Handle events minimally:
+   - checkout.session.completed:
+       fetch session.subscription and session.customer
+       map price_id -> plan_key
+       upsert subscriptions row + set status
+       upsert entitlements based on plan_key
+   - customer.subscription.updated / deleted:
+       update subscriptions.status + current_period_end
+       if deleted/canceled -> set entitlement back to free
+   - invoice.payment_succeeded:
+       ensure entitlement active (pro/pro_plus) when status is active/trialing
+   - invoice.payment_failed:
+       if status becomes past_due/unpaid -> optionally downgrade entitlements or mark limited access (MVP: downgrade only when subscription deleted)
+
+- GET /api/billing/status
+  Returns current user entitlement + subscription status.
+
+4) FRONTEND UI
+Add routes:
+- /billing
+- /billing/success
+
+/billing page:
+- Show current plan (free/pro/pro_plus)
+- Show device_limit and key limits
+- Buttons:
+  - Upgrade to Pro
+  - Upgrade to Pro Plus
+  - If already subscribed: show “Manage subscription” placeholder (Portal optional later)
+
+On Upgrade button:
+- call POST /api/billing/checkout
+- redirect to returned url
+
+/billing/success:
+- show “Payment received, syncing plan…”
+- poll GET /api/billing/status until plan != free or show refresh instructions
+
+5) SECURITY / RELIABILITY
+- Never trust client “success” redirect alone; entitlements must be updated by webhook.
+- Verify webhook signatures.
+- Store Stripe ids in DB.
+- Keep access control based on entitlements table.
+
+6) OUT OF SCOPE (for now)
+- Stripe Customer Portal (optional later)
+- Proration / upgrades in place (start with checkout flow)
+- Taxes/VAT
+- Enterprise invoicing
+
+DELIVERABLES
+- Working Stripe Checkout subscription flow
+- Working webhook handling that updates entitlements
+- Billing UI showing plan and upgrade buttons
+- README with required env vars and how to test webhooks (Stripe CLI suggestion)
+
+Implement end-to-end with clean code and Drizzle migrations.

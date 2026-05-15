@@ -1,0 +1,116 @@
+Feature: Lightweight Study Guidance Layer (Enabled for All Students)
+
+Objective:
+Introduce soft, non-blocking study nudges across the student workflow to encourage structured learning and repeat usage.
+
+This is NOT a full study plan engine.
+This is a guidance layer only.
+No hard locks. No enforced sequence.
+
+---------------------------------------
+PART 1 — Minimal Tracking (Per Topic)
+---------------------------------------
+
+For each uploaded document/topic, track:
+
+- flashcards_generated (boolean)
+- practice_questions_count (integer)
+- quizzes_taken_count (integer)
+- last_active_timestamp (datetime)
+- topic_progress_percentage (derived, not stored if unnecessary)
+
+Tracking must remain lightweight and scoped per topic.
+
+---------------------------------------
+PART 2 — Sequential Recommendation Banners
+---------------------------------------
+
+After each relevant action, show a small, dismissible recommendation banner.
+
+1) After Upload (first interaction on topic):
+Banner:
+"Recommended next step: Generate Flashcards to understand key concepts."
+CTA: Generate Flashcards
+
+2) After Flashcards Generated:
+If practice_questions_count == 0:
+Banner:
+"Now apply what you've learned with practice questions."
+CTA: Generate Practice Questions
+
+3) After Practice Questions:
+If practice_questions_count >= 10 AND quizzes_taken_count == 0:
+Banner:
+"Ready to test yourself? Try a timed quiz."
+CTA: Start Quiz
+
+Banners must:
+- Be subtle
+- Be dismissible
+- Not block navigation
+- Reappear only if user hasn’t completed that stage
+
+---------------------------------------
+PART 3 — Time-Based Nudge
+---------------------------------------
+
+If:
+- User spends > 5 minutes actively interacting with topic
+AND
+- quizzes_taken_count == 0
+
+Show:
+"You’ve been studying this topic. Want to see how you'd perform in a real exam?"
+CTA: Start Timed Quiz
+
+Trigger only once per session.
+
+---------------------------------------
+PART 4 — Post-Quiz Habit Loop
+---------------------------------------
+
+After completing a quiz:
+
+Show:
+"Great session. Come back tomorrow for a revision quiz to reinforce weak areas."
+
+Store last_active_timestamp.
+
+On next login (if >24 hours since last quiz on same topic):
+
+Show:
+"Continue your progress on [Topic Name]?"
+CTA: Resume Topic
+
+---------------------------------------
+PART 5 — Lightweight Progress Indicator
+---------------------------------------
+
+Add small topic-level progress indicator:
+
+Topic Progress: X%
+
+Simple rule logic:
+
++20% if flashcards_generated == true
++30% if practice_questions_count >= 10
++50% if quizzes_taken_count >= 1
+
+Cap at 100%.
+
+No predictive scoring.
+No performance-based projection.
+Completion-based only.
+
+---------------------------------------
+UI Requirements:
+---------------------------------------
+
+- Use clean minimal banner design.
+- No modal popups.
+- No blocking flow.
+- Must feel supportive, not prescriptive.
+- Must align with current Evident UI styling.
+
+Goal:
+Encourage repeat usage and structured learning without increasing cognitive load or feature complexity.

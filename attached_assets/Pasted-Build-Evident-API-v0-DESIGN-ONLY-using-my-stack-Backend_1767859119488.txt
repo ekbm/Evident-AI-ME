@@ -1,0 +1,255 @@
+Build “Evident API v0” (DESIGN-ONLY) using my stack:
+
+Backend:
+- Node.js + Express
+- TypeScript
+- PostgreSQL
+- Drizzle ORM (schema + migrations)
+- Zod for request validation
+- Swagger UI + OpenAPI file
+- Consistent response envelope, requestId, and error shape
+- API versioning under /api/v0
+- Auth stub via x-api-key header (no real auth integration)
+- Rate-limit stub middleware (sets headers but doesn’t block yet)
+
+Frontend is separate (React + TanStack Query), but the API must be designed to be clean for React Query consumption.
+
+Goal:
+Lock 5 future-proof API surfaces (design only). Implement full route skeletons + service layer + database tables to store objects, but keep the “AI” logic mocked/deterministic. The point is: stable contracts + audit-friendly data model.
+
+Monorepo-ish preference (if applicable):
+- Put shared Zod schemas/types in a folder like /shared or /src/shared that could later be imported by the frontend.
+
+========
+API OBJECT MODEL (DB + Types)
+========
+Create these core objects and use them everywhere:
+
+Organization:
+- id (text, e.g., org_123)
+- name
+- createdAt
+
+DataSource:
+- id (src_123)
+- orgId
+- type ("upload" | "drive" | "smb" | "api")
+- name
+- status ("active" | "paused")
+- createdAt
+
+Document:
+- id (doc_123)
+- orgId
+- sourceId nullable
+- filename
+- mimeType
+- sizeBytes
+- checksum
+- status ("ingested" | "chunked" | "ready" | "error")
+- createdAt
+- updatedAt
+
+Chunk:
+- id (chk_123)
+- docId
+- idx (int)
+- text
+- tokenCount (int)
+- createdAt
+
+ReadinessScore:
+- id (rds_123)
+- docId
+- score0to100 (int)
+- grade ("A"|"B"|"C"|"D"|"F")
+- issues (jsonb array)
+- recommendations (jsonb array)
+- computedAt
+
+Extraction:
+- id (ext_123)
+- docId
+- kind ("entities" | "tables" | "relationships")
+- status ("complete" | "pending" | "error")
+- output (jsonb)
+- createdAt
+
+KnowledgeGraph:
+- id (kg_123)
+- orgId
+- nodes (jsonb)
+- edges (jsonb)
+- generatedAt
+
+AuditLog:
+- id (aud_123)
+- orgId
+- actor ("system" | "user" | "partner")
+- action (e.g., "INGESTED_DOCUMENT", "COMPUTED_READINESS", "RAN_EXTRACTION", "GENERATED_GRAPH")
+- targetType ("document"|"readiness"|"extraction"|"graph"|"source")
+- targetId
+- metadata (jsonb)
+- at (timestamp)
+
+========
+GLOBAL API CONVENTIONS
+========
+Every response must be:
+{ requestId, data, error }
+
+- requestId generated per request and added to response headers too
+- error shape:
+  { code, message, details? }
+- Use ISO timestamps in responses
+- List endpoints return:
+  { items, nextCursor? }
+- IDs are text like org_123, doc_123 (create small helper to generate IDs)
+
+========
+LOCK 5 FUTURE-PROOF API SURFACES (DESIGN ONLY)
+========
+
+A) Ingestion API
+1) POST /api/v0/ingest/document
+Request body (Zod):
+{ orgId, sourceId?, filename, mimeType, contentBase64? OR contentText? OR fileUrl? }
+Rules:
+- Must accept at least one of contentBase64/contentText/fileUrl
+Behavior:
+- Create Document row
+- Create mock chunks (e.g., split contentText into paragraphs; if base64 or fileUrl, generate placeholder chunks)
+- Write AuditLog event "INGESTED_DOCUMENT"
+Response:
+- Document
+
+2) POST /api/v0/ingest/batch
+Request:
+{ orgId, sourceId?, items:[{ filename, mimeType, contentBase64? contentText? fileUrl? }] }
+Behavior:
+- Create batchId
+- Insert documents + chunks
+- AuditLog event per document
+Response:
+{ batchId, acceptedCount, documents:[Document] }
+
+B) Readiness & Validation API
+1) GET /api/v0/readiness/:docId
+Behavior:
+- If readiness exists, return it
+- Else compute deterministically (no AI calls) based on:
+  mimeType, sizeBytes, whether chunks exist, average tokenCount, presence of “scanned” keyword, etc.
+- Example issues:
+  "No extractable text", "Low structure", "Too large", "Image-based PDF suspected"
+- Save ReadinessScore + AuditLog "COMPUTED_READINESS"
+Response:
+- ReadinessScore
+
+2) GET /api/v0/orgs/:orgId/readiness-summary
+Response:
+{ orgId, docsScanned, avgScore, gradeBreakdown:{A,B,C,D,F}, topIssues:[{issue, count}] }
+
+C) Extraction API
+1) GET /api/v0/extract/:docId/entities
+Response: Extraction with output:
+{ entities:[{ type, value, confidence, evidenceChunkIds[] }] }
+
+2) GET /api/v0/extract/:docId/tables
+Response output:
+{ tables:[{ title?, rows:[string[]] }] }
+
+3) GET /api/v0/extract/:docId/relationships
+Response output:
+{ relationships:[{ from, to, type, confidence, evidenceChunkIds[] }] }
+
+Behavior for all extraction endpoints:
+- If extraction exists, return it
+- Else generate mock-but-realistic output from chunk text (simple regex heuristics)
+- Store Extraction row + AuditLog "RAN_EXTRACTION"
+
+D) Knowledge API
+1) GET /api/v0/knowledge/search?orgId=...&q=...&topK=...&filters=...
+Response:
+{ orgId, q, results:[{ docId, chunkId, score, snippet }] }
+Behavior:
+- Use a lightweight scoring heuristic (keyword overlap) over chunks in the org
+
+2) GET /api/v0/knowledge/graph?orgId=...
+Response: KnowledgeGraph
+Behavior:
+- Build nodes/edges from entity + relationship extractions
+- Save KnowledgeGraph + AuditLog "GENERATED_GRAPH"
+
+E) Audit & Trust API
+1) GET /api/v0/audit/lineage?orgId=...&docId=...
+Response:
+{ orgId, docId?, lineage:[{ docId, sourceId, ingestedAt, readinessComputedAt?, extractionsRun:[kinds], lastUpdatedAt }] }
+
+2) GET /api/v0/audit/last-updated?orgId=...
+Response:
+{ orgId, lastIngestAt, lastReadinessAt, lastExtractionAt, lastGraphAt }
+
+========
+PROJECT STRUCTURE
+========
+Use a clean structure:
+
+/src
+  /db
+    client.ts
+    schema.ts (Drizzle tables)
+  /shared
+    types.ts
+    schemas.ts (Zod)
+  /middleware
+    auth.ts
+    ratelimit.ts
+    requestId.ts
+    errorHandler.ts
+  /utils
+    id.ts
+    pagination.ts
+  /services
+    ingestion.service.ts
+    readiness.service.ts
+    extraction.service.ts
+    knowledge.service.ts
+    audit.service.ts
+  /routes
+    ingestion.routes.ts
+    readiness.routes.ts
+    extraction.routes.ts
+    knowledge.routes.ts
+    audit.routes.ts
+  app.ts
+  server.ts
+openapi.yaml (or openapi.json)
+README.md
+
+========
+DATABASE REQUIREMENTS
+========
+- Provide Drizzle config
+- Provide migration setup (or drizzle-kit instructions)
+- Use PostgreSQL connection via env vars
+- Provide seed script that creates:
+  1 org, 1 datasource, and 2 sample docs + chunks
+
+========
+OPENAPI + DOCS
+========
+- Generate and include openapi.yaml/json describing all endpoints and schemas
+- Serve Swagger UI at /docs
+- Make sure /docs works in Replit
+
+========
+RUNNING
+========
+- npm scripts: dev, build, start, db:migrate, db:seed
+- dev uses tsx or ts-node-dev
+- Provide working curl examples in README for each surface
+
+Finally:
+Output the complete file tree and all code files.
+Make sure it runs end-to-end on Replit with PostgreSQL enabled.
+No real AI calls — deterministic/mock logic only.

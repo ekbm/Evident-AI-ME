@@ -1,0 +1,149 @@
+You are working in an existing app called “Evident” (React 18 + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query).
+Backend is Node/Express + PostgreSQL (Drizzle). The app already supports document upload + AI readiness scanning.
+
+TASK:
+Implement (1) onboarding with two clear paths and (2) a clean pricing tiers UI that supports both audiences:
+A) Individuals/Small teams (in-app subscription concept)
+B) Enterprises/Organisations (one-off assessment + pilot monitoring, request-based)
+
+IMPORTANT:
+- We are NOT implementing Apple StoreKit purchases now. This is UI + feature flag wiring only.
+- Add a “mode” selection that changes defaults/labels and routes, but uses the same underlying app engine.
+- Do not hardcode prices like "$9.99" (these will come later from StoreKit / web). Use “From … / month” placeholders.
+
+--------------------------------------------------------------------
+PART 1 — ONBOARDING: TWO PATHS
+--------------------------------------------------------------------
+
+Create an onboarding flow that appears:
+- On first launch OR when user has no stored preference.
+- The user can change this later in Settings.
+
+Data to store:
+- appMode: 'WORKSPACE' | 'PILOT'
+Persist in localStorage (v1) and also in backend user profile if available.
+
+Route:
+- /onboarding (new)
+- After selection, redirect:
+  - WORKSPACE -> /documents (or existing home)
+  - PILOT -> /pilot (new or existing pilot entry page)
+
+Onboarding screen copy (use exactly):
+
+Screen title: "Welcome to Evident"
+Subtitle: "Make documents safe, reliable, and ready for AI — before you rely on them."
+Question: "How would you like to use Evident?"
+
+Option Card A (WORKSPACE):
+Title: "Upload & Ask"
+Subtitle: "Work with your documents privately and get reliable AI answers."
+Bullets:
+- "Upload documents and ask questions"
+- "Automatically check if files are AI-ready"
+- "Fix common issues like scanned PDFs or poor structure"
+- "Keep everything private to your workspace"
+Primary button: "Start personal workspace"
+Helper text (small): "Best for individuals, consultants, and small teams."
+
+Option Card B (PILOT):
+Title: "Start an AI Pilot (Recommended for organisations)"
+Subtitle: "Safely test AI on real documents — starting with one folder."
+Bullets:
+- "Assess whether your documents are AI-ready"
+- "Start small with limited folders or data"
+- "Keep control, ownership, and visibility"
+- "Avoid rolling AI across your organisation too early"
+Primary button: "Start pilot mode"
+Helper text (small): "Best for enterprises, regulated teams, and cautious rollouts."
+
+Footer reassurance (small text):
+"You can switch modes later. Both paths use the same Evident engine."
+
+Implementation details:
+- Use shadcn/ui Card components.
+- Make the two options visually equal weight; do NOT hide enterprise option behind links.
+- On click:
+  - set appMode in localStorage (and POST to backend /api/me/preferences if available; otherwise stub)
+  - navigate to appropriate route.
+- Add a “Skip” link ONLY if necessary; otherwise enforce choosing one option (recommended).
+
+Settings:
+Add a Settings screen section:
+- "Usage mode"
+- Current mode label + "Change mode" button
+- Change mode returns to /onboarding
+
+--------------------------------------------------------------------
+PART 2 — PRICING TIERS UI: CLEAN & NON-CONFUSING
+--------------------------------------------------------------------
+
+Add a Pricing page and contextual upgrade CTAs.
+Routes:
+- /pricing (new)
+
+Pricing page must clearly separate:
+A) Personal / Team plans (in-app subscription concept)
+B) Organisation plans (request-based)
+
+Page header:
+Title: "Plans"
+Subtitle: "Choose a path that fits how you use Evident."
+
+Section A: "Personal / Team"
+Show 2 plan cards (Free, Pro). Do NOT include exact prices; use placeholders:
+- Free:
+  - "Upload limited documents"
+  - "AI readiness scan"
+  - "See issues"
+  - "Manual preparation"
+  - "Private workspace only"
+  CTA button: "Current plan" (if user not subscribed) or "Downgrade" (disabled for now)
+- Pro:
+  - "Higher document limits"
+  - "Auto “Make AI-Ready”"
+  - "Scan history"
+  - "Exports"
+  - "Priority processing"
+  Price label: "From … / month" (placeholder)
+  CTA button: "Upgrade to Pro" (opens modal that says “Coming soon” + “Request early access”)
+
+Section B: "Organisation"
+Show 2 cards (One-off Assessment, Pilot Monitoring):
+- "AI Readiness Assessment (One-off)"
+  Body:
+  "A structured, one-time assessment of your document environment: readiness scores, folder heatmap, key risks, and a practical improvement roadmap."
+  CTA: "Request an assessment" (opens the Assessment Request modal you already have, or create it now)
+- "Pilot Monitoring (Subscription)"
+  Body:
+  "Continuous readiness monitoring for a small pilot scope: scheduled scans, auto preparation, and trends—designed to start safely with real data."
+  Price label: "By scope" (not a number)
+  CTA: "Talk to us" (opens same modal, with assessmentTarget prefilled as NAS/SMB)
+
+Add a small note under Organisation section:
+"Organisation plans are scoped to your folders and governance needs. We’ll help you start small."
+
+Contextual CTAs (mode-aware):
+- If appMode === WORKSPACE:
+  - Show a subtle banner in /documents header: “Need more uploads or auto-prep? View Pro.” -> /pricing#personal
+- If appMode === PILOT:
+  - Show a banner in /pilot pages: “Need a one-off assessment or monitoring? View Organisation plans.” -> /pricing#org
+
+Feature flag wiring (no StoreKit yet):
+Create a simple entitlement state:
+- entitlement.pro = false by default
+- Later will be set via StoreKit
+For now, if user clicks “Upgrade to Pro”, open modal:
+Title: "Pro is coming soon"
+Body: "We’re finalising subscriptions. Leave your details for early access."
+Button: "Request early access" -> submits assessment request type 'UPLOADS' (or a new request type 'EARLY_ACCESS')
+
+Deliverables:
+- /onboarding screen implemented with the exact copy above
+- appMode stored + switchable in Settings
+- /pricing page with two separated sections and clear CTAs
+- Mode-aware banners linking to pricing sections
+- “Upgrade to Pro” modal with early access request flow (no payments)
+- Ensure TypeScript types for mode and entitlements are centralised (e.g., AppContext)
+
+Now implement this end-to-end in the existing codebase.

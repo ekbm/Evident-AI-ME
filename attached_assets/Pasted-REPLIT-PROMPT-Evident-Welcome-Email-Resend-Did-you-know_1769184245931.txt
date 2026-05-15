@@ -1,0 +1,181 @@
+REPLIT PROMPT — Evident: Welcome Email (Resend) + “Did you know…” Discovery Tips
+
+Goal:
+Implement a welcome email that sends once per user (first signup/first successful login) using Resend, with a calm, human design and the exact copy provided. Also add the foundation for “Did you know you could…” moments inside the app (post-answer suggestion card), with simple tracking so tips don’t repeat.
+
+Current stack assumptions:
+- Firebase Auth (already used)
+- Backend: Node.js + Express + TypeScript
+- Frontend: React + TS
+- DB: PostgreSQL (Drizzle) OR Firestore (user profile store)
+- Email provider: Resend (already used)
+- App name: Evident
+
+Part A — Send welcome email (Resend)
+
+1) Data model: “send once” flag
+Add one of these (choose based on your current user store):
+Option 1 (Postgres):
+- Add column on users table:
+  welcome_email_sent_at TIMESTAMP NULL
+
+Option 2 (Firestore user profiles):
+- Add field:
+  welcome_email_sent_at: serverTimestamp | null
+
+Also store:
+- created_at
+- last_login_at
+
+2) Trigger strategy (implement Option B now; optionally add Option A later)
+Option B (recommended for simplicity): Server endpoint called once after first login
+- Endpoint: POST /api/email/welcome
+- Client calls it after login (or after user profile is created).
+- Server verifies Firebase ID token (Authorization: Bearer <idToken>).
+- Server checks welcome_email_sent_at:
+  - If exists => return 204 (no-op)
+  - If missing => send email via Resend, then set welcome_email_sent_at = now.
+
+Important behaviors:
+- Do NOT block login if email fails.
+- Log a minimal error (no sensitive info).
+- One retry max (optional).
+
+3) Resend integration
+- Install: resend npm package
+- Env vars:
+  RESEND_API_KEY
+  EMAIL_FROM="Evident <no-reply@yourdomain.com>" (or your Resend verified sender)
+  EMAIL_REPLY_TO="support@yourdomain.com" (optional)
+- Use Resend API to send:
+  - to: user.email (from verified domain)
+  - subject: "Welcome to Evident"
+  - html: rendered HTML template
+  - text: plain text fallback
+  - reply_to if configured
+
+4) Email HTML template requirements (email-safe)
+- Single column, max-width 600px
+- Left aligned
+- Background #FFFFFF
+- Text #222, secondary #555
+- System font stack:
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+- Body font-size 16px; line-height 1.6
+- Heading “Welcome to Evident.” should be 18–20px and semi-bold
+- No hero images required
+- Provide plaintext fallback for deliverability
+
+5) Email content (MUST MATCH EXACTLY)
+Subject: Welcome to Evident
+
+Body copy (preserve line breaks; the *italics* in your source becomes normal text in plain text and <em> in HTML):
+
+Hi there,
+
+Welcome to Evident.
+
+Most people think the problem with AI is that it’s too complex — or that you need to be “good at it” to use it properly.
+
+That’s not really true.
+
+The real gap isn’t intelligence or ability.  
+It’s that no one has shown us what’s possible yet.
+
+You already have information that matters — in your notes, documents, PDFs, files you’ve saved for later.  
+What’s often missing isn’t the content, but a way to *understand it clearly*, ask better questions, and explore it without feeling lost or unsure.
+
+Evident was built for that moment.
+
+You don’t need the right words.  
+You don’t need to know what to ask.  
+You don’t need to be “technical.”
+
+Just start with what you have.
+
+As you use Evident, you may notice small moments where you think:  
+“I didn’t know I could do that.”
+
+Those moments matter.  
+They’re how confidence builds — quietly, naturally, at your own pace.
+
+Evident isn’t here to replace anyone or overwhelm you with technology.  
+It’s here to help you make sense of your information, discover what’s possible, and feel more comfortable using the tools shaping the future.
+
+We’re glad you’re here.
+
+— The Evident Team
+
+Implementation details:
+- Create a file like: server/email/templates/welcome.ts
+  - export function renderWelcomeEmailHtml(): string
+  - export function renderWelcomeEmailText(): string
+- Create: server/email/resendClient.ts
+- Create: server/routes/email.ts for POST /api/email/welcome
+- Add Firebase token verify helper: server/auth/verifyFirebaseToken.ts
+
+Frontend changes:
+- After user logs in (and you have their Firebase ID token), call:
+  fetch("/api/email/welcome", { method:"POST", headers:{ Authorization:`Bearer ${idToken}` } })
+- Ignore failures silently; do not show error UI.
+
+Part B — “Did you know you could…” (foundation inside app)
+
+Goal:
+After the user gets a successful answer in chat, show a small inline card with 2–3 quick actions. Tips should be contextual and should not repeat once dismissed or used.
+
+1) Track discovery flags (keep it simple)
+Option 1 (Postgres table):
+- user_discovery_flags:
+  user_id PK/FK
+  seen_tip_after_answer BOOLEAN default false
+  seen_tip_summary BOOLEAN default false
+  seen_tip_simplify BOOLEAN default false
+  updated_at TIMESTAMP
+
+Option 2 (Firestore subdoc):
+- users/{uid}/flags/discovery:
+  seen_tip_after_answer
+  seen_tip_summary
+  seen_tip_simplify
+
+2) Rules engine (hardcoded v1)
+Create a function:
+getNextDiscoveryTip(userFlags, context) -> { id, title, actions[] } | null
+
+Rules (example):
+- If answer_success === true AND !seen_tip_after_answer:
+  show tip:
+  Title: “Did you know you could…”
+  Actions:
+    - “Summarise this”
+    - “Explain simply”
+    - “Key points only”
+
+3) UI component (React)
+- Create: client/components/DiscoveryTipCard.tsx
+- Inline card appears after the assistant response (not as a popup)
+- Dismissible (“Not now”)
+- On dismiss: persist seen_tip_after_answer = true
+- On action click: trigger existing chat prompt templates (e.g. append “Summarise the above…”)
+
+4) Keep it subtle (design)
+- No loud colors, no badges
+- Plenty of whitespace
+- Left aligned
+
+Deliverables:
+- Working Resend welcome email endpoint (send once)
+- Email template (HTML + text) in clean files
+- DB migration (if Postgres) OR Firestore schema notes
+- Frontend call after login
+- Minimal “Did you know…” card after a successful answer + flag tracking
+- README with env vars and test steps
+
+Constraints:
+- Secure token verification
+- Do not log sensitive data
+- Email failures must not affect login
+- Minimal dependencies
+
+Now implement all of the above with clean structure and clear comments.

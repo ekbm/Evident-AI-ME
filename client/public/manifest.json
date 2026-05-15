@@ -1,0 +1,47 @@
+{
+  "name": "Evident AI",
+  "short_name": "Evident",
+  "description": "AI-powered document assistant with evidence-based answers and citations",
+  "start_url": "/full",
+  "display": "standalone",
+  "background_color": "#090e1a",
+  "theme_color": "#090e1a",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "education", "business"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "itunes",
+      "url": "https://apps.apple.com/au/app/evidentai/id6758041735",
+      "id": "6758041735"
+    }
+  ],
+  "prefer_related_applications": false,
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Chat with Evi",
+      "url": "/full",
+      "description": "Open AI assistant"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+You are a senior full-stack engineer joining the Evident AI codebase.
+
+Goal:
+Audit whether the “AI Document Preparation Engine” is already implemented and fully wired end-to-end, and produce a clear checklist report with evidence (file paths, functions, and call sites).
+
+Context:
+Evident has:
+- Chat with Evi
+- Knowledge Space (document ingestion + Q&A)
+- A planned 3rd tab: AI Readiness / Knowledge Health (currently admin-only)
+We believe we already have a preparation engine that may do OCR/cleaning/chunking/metadata, but we need to confirm what is actually enabled today.
+
+What to do (do NOT guess; verify by reading the repo):
+1) Find the pipeline entrypoints:
+   - Search the repo for keywords:
+     "ocr", "textract", "tesseract", "vision", "pdf", "extract", "parser", "chunk", "embedding",
+     "readiness", "score", "health", "preprocess", "normalize", "clean", "ingest", "pipeline", "job", "queue"
+   - Identify:
+     a) Ingestion entrypoint(s) (upload, sync, webhook, cron)
+     b) Pre-processing / preparation step(s)
+     c) Storage outputs (S3 keys, DB tables, vector store)
+     d) Retrieval / chat uses prepared outputs
+
+2) Produce an “Engine Capabilities Audit” table:
+   For each capability below, mark one:
+   ✅ Implemented + wired
+   🟡 Implemented but not used
+   ❌ Missing
+   And include evidence:
+   - file path(s)
+   - function/class name(s)
+   - where it’s called
+   Capabilities to audit:
+   A. OCR for scanned PDFs/images
+   B. PDF text extraction (digital PDFs)
+   C. Table extraction / structured tables
+   D. Heading/section detection or structure inference
+   E. Metadata generation (author/date/type/topic)
+   F. Chunking strategy (semantic/section-based vs naive)
+   G. Embedding creation + vector storage
+   H. Re-score / “readiness score” computation
+   I. Report generation (daily summary / per-folder metrics)
+   J. Background processing (queue/cron/worker) + retries
+   K. “Do not modify original” versioning (original vs AI-ready artifact)
+
+3) Verify runtime wiring:
+   - Confirm the pipeline runs when a doc is uploaded.
+   - If OneDrive/SharePoint is present, confirm a sync job exists (webhook/cron).
+   - Confirm chat retrieval uses the prepared chunks/embeddings (not raw file text).
+
+4) Output a concrete report:
+   - A short diagram (text) of the current pipeline.
+   - A list of missing steps and the minimal changes required to enable them.
+   - If an “AI readiness” score exists, explain exactly how it is computed and where it is stored.
+
+Deliverable format:
+- Start with a high-level summary (5–10 lines)
+- Then the audit table (capability → status → evidence)
+- Then “Wiring Findings” (upload path, background jobs, storage)
+- Then “Gaps & Fixes” (prioritized)
+- Keep it precise and include file paths everywhere.

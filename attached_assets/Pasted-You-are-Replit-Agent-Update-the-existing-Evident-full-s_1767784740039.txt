@@ -1,0 +1,296 @@
+You are Replit Agent. Update the existing “Evident” full-stack app to add a PREMIUM dashboard with an AI Readiness Score (0–100%), industry benchmark band (template-based), confidence indicator, breakdown metrics, and a premium-looking dashboard layout with conservative tooltips (no overpromising).
+
+GOAL
+Evident Premium should help small companies gradually adopt AI by converting offline/legacy files into AI-ready knowledge. The dashboard must show:
+- AI Readiness Score (0–100)
+- Confidence level (Low/Medium/High)
+- Estimated “typical range” benchmark for similar industry & size band (template-based; clearly labeled)
+- Score breakdown (Coverage, Structure, Retrieval Quality, Freshness & Governance, Adoption & Workflow)
+- Top 3 recommended actions
+- Scheduled reports section (enabled/disabled)
+- Training Data Preparation progress + Export button (Premium-only)
+
+IMPORTANT TRUST REQUIREMENTS
+- Do NOT claim we have real peer benchmarking. For MVP show: “Estimated typical range (template-based)”.
+- Add tooltips explaining every metric.
+- Add a footer disclaimer: score indicates preparedness of information, not automation readiness, correctness, or compliance.
+
+STACK
+Keep current stack (Node.js + Express + SQLite + OpenAI). UI should be simple server-served HTML+CSS+JS (no heavy React required) to ensure Replit stability.
+
+PLANS + LIMITS (ALREADY ADDED OR MUST EXIST)
+Ensure plan system exists with: FREE, PRO, PLUS, PREMIUM_ORG
+If not present, implement it.
+PREMIUM_ORG plan (display only, no billing):
+- Price: $79/month
+- Storage: 10 GB
+- Queries: 1,000/month
+- Media transcription: 300 min/month
+- Supports: multi-file workspaces, scheduled reports, training data export, readiness dashboard
+
+DATABASE CHANGES (SQLite)
+Add tables (single workspace/org MVP is OK):
+
+org_profile:
+- id TEXT PRIMARY KEY (use a fixed ID like "org_1")
+- org_name TEXT
+- industry TEXT
+- company_size_band TEXT  -- "1-10" | "11-50" | "51-200"
+- created_at TEXT
+
+readiness_scores:
+- id TEXT PRIMARY KEY
+- month TEXT              -- YYYY-MM
+- score_total REAL
+- score_coverage REAL
+- score_structure REAL
+- score_retrieval REAL
+- score_freshness REAL
+- score_adoption REAL
+- confidence TEXT         -- LOW | MEDIUM | HIGH
+- details_json TEXT       -- store raw metric counts
+- created_at TEXT
+
+readiness_events (for counting usage & quality signals):
+- id TEXT PRIMARY KEY
+- type TEXT              -- upload | chat_answered | chat_not_found | export | report_run | missing_context | conflict_detected
+- asset_id TEXT NULL
+- workspace_id TEXT NULL
+- created_at TEXT
+
+reports:
+- id TEXT PRIMARY KEY
+- type TEXT              -- weekly_summary | monthly_gaps
+- schedule TEXT          -- weekly | monthly
+- enabled INTEGER        -- 0/1
+- last_run TEXT NULL
+- next_run TEXT NULL
+- content_json TEXT NULL
+- created_at TEXT
+
+training_exports:
+- id TEXT PRIMARY KEY
+- format TEXT            -- json | csv
+- created_at TEXT
+- s3_key_or_path TEXT NULL (for MVP store as local file path)
+- summary TEXT NULL
+
+SCORING MODEL (IMPLEMENT EXACTLY)
+Compute readiness score from last 30 days data, then map to 0..100.
+
+1) COVERAGE (30 points)
+- uploaded_assets_count = COUNT(assets)
+- target_assets_count = configurable setting (default 30), stored in settings table as key="target_assets_count"
+- coverage_ratio = min(1.0, uploaded_assets_count / target_assets_count)
+- missing_context_count_last30d = COUNT(readiness_events where type="missing_context" in last 30 days)
+- missing_context_penalty = min(10, missing_context_count_last30d)
+- coverage_score = 30 * coverage_ratio - missing_context_penalty
+Clamp 0..30
+
+2) STRUCTURE (20 points)
+- structured_exports_count_last30d = COUNT(readiness_events where type IN ("export") last 30 days) +
+  COUNT(actions run like "extract_obligations" stored as readiness_events type="export" or type="structure_run"
+- structured_assets_ratio = structured_exports_count_last30d / max(1, uploaded_assets_count)
+- structure_score = min(20, 20 * structured_assets_ratio)
+Clamp 0..20
+
+3) RETRIEVAL QUALITY (20 points)
+- total_questions_last30d = COUNT(readiness_events where type in ("chat_answered","chat_not_found") last 30 days)
+- answered_questions_last30d = COUNT(type="chat_answered" last 30 days)
+- answered_ratio = answered_questions_last30d / max(1, total_questions_last30d)
+- retrieval_score = 20 * answered_ratio
+Clamp 0..20
+Definition:
+- “chat_answered” if response includes citations and does NOT contain "Not found"
+- “chat_not_found” if response indicates missing evidence / not found.
+
+4) FRESHNESS & GOVERNANCE (15 points)
+- assets_with_metadata = COUNT(artifacts where metadata_json not empty grouped by asset)
+- freshness_ratio = assets_with_metadata / max(1, uploaded_assets_count)
+- conflicts_penalty = min(5, COUNT(readiness_events where type="conflict_detected" last 30d))
+- freshness_score = 15 * freshness_ratio - conflicts_penalty
+Clamp 0..15
+
+5) ADOPTION & WORKFLOW (15 points)
+- reports_enabled = reports.enabled==1 (weekly or monthly)
+- report_run_count_last30d = COUNT(readiness_events where type="report_run" last 30d)
+- usage_days_last30d = distinct days where any readiness_event occurred last 30d
+- adoption_score starts at 0:
+  +5 if reports_enabled
+  +5 if report_run_count_last30d >= 1
+  +5 if usage_days_last30d >= 4
+Clamp 0..15
+
+TOTAL
+score_total = sum component scores, clamp 0..100.
+
+CONFIDENCE LEVEL
+Compute confidence from:
+- uploaded_assets_count and total_questions_last30d
+Rules:
+- LOW if uploaded_assets_count < 10 OR total_questions_last30d < 20
+- MEDIUM if uploaded_assets_count between 10–50 AND total_questions_last30d between 20–200
+- HIGH if uploaded_assets_count > 50 AND total_questions_last30d > 200
+
+INDUSTRY BENCHMARK RANGE (MVP TEMPLATE-BASED)
+Create a mapping by (industry, company_size_band) to min-max ranges. Example:
+Construction:
+- 1-10: 20–40
+- 11-50: 35–55
+- 51-200: 45–65
+Legal:
+- 1-10: 30–50
+- 11-50: 45–65
+- 51-200: 55–75
+IT/Software:
+- 1-10: 35–55
+- 11-50: 50–70
+- 51-200: 60–80
+Retail:
+- 1-10: 15–35
+- 11-50: 25–45
+- 51-200: 35–55
+Healthcare:
+- 1-10: 25–45
+- 11-50: 35–55
+- 51-200: 45–65
+UI must label:
+“Estimated typical range (template-based)”
+Tooltip: “Not a market survey. Based on internal readiness templates.”
+
+EVENT INSTRUMENTATION (IMPORTANT)
+Every important action should log to readiness_events:
+- On successful upload: type="upload"
+- On chat answered: type="chat_answered"
+- On chat not found: type="chat_not_found"
+- On AI requests missing context: type="missing_context"
+- On training export: type="export"
+- When scheduled report runs: type="report_run"
+
+ADD BACKGROUND JOB (SIMPLE SCHEDULER)
+Implement a lightweight scheduler (node-cron or a simple setInterval loop) that:
+- If reports.enabled=1:
+  - Weekly Summary runs once per week
+  - Monthly Gaps runs once per month
+For MVP in Replit, you may simulate schedule:
+- Run weekly report every 5 minutes
+- Run monthly report every 10 minutes
+But label them as weekly/monthly in UI.
+Store report content_json and log readiness_events report_run.
+
+REPORT CONTENT (MVP)
+Weekly Summary:
+- Top questions (from recent /api/chat logs if available; otherwise show counts)
+- Most referenced assets
+- New obligations detected (if any)
+Monthly Gaps:
+- Questions that returned “Not found”
+- Missing referenced documents count
+- Suggested next uploads
+
+TRAINING DATA PREPARATION (MVP)
+On Premium dashboard show:
+- Training-ready % = min(100, (structured_exports_count_last30d / max(1, uploaded_assets_count)) * 100)
+Show bar + text:
+“40% of documents are training-ready”
+Tooltip: “Training-ready documents have structured outputs suitable for internal copilots or downstream systems. Review before use.”
+Add button “Export Training Data”:
+- Generates Q&A pairs from all chunks across workspace
+- Exports JSON and CSV and saves file to /exports/ with a link to download.
+
+API ENDPOINTS
+Add/ensure endpoints:
+- GET /api/org-profile
+- POST /api/org-profile (set org_name, industry, size band)
+- GET /api/readiness (latest readiness score + breakdown + confidence + benchmark range + top actions)
+- POST /api/readiness/recompute (manual recompute)
+- GET /api/reports
+- POST /api/reports/enable (enable/disable weekly/monthly)
+- POST /api/premium/export-training-data
+
+DASHBOARD UI LAYOUT (MUST MATCH THIS, PREMIUM LOOK)
+Create /premium dashboard page with these cards in order:
+
+A) Top Context Bar
+- Workspace name
+- Industry & size band
+- Plan badge “Premium Organisation”
+- Last updated timestamp
+
+B) Hero Card: AI Readiness Score
+- Big gauge or progress bar with “XX%”
+- Subtext: “Moderate readiness — suitable for assisted AI use with human review.”
+- Benchmark band row:
+  “Compared to similar organisations”
+  “Estimated typical range (template-based): 35–55%”
+  “You: 62%”
+- Confidence badge: Low/Medium/High
+Tooltips:
+- Score tooltip explains what it is and what it is NOT.
+- Benchmark tooltip says it is template-based.
+
+C) Breakdown Card: Readiness Breakdown
+Five rows with bars:
+- Coverage (0–30)
+- Structure (0–20)
+- Retrieval Quality (0–20)
+- Freshness & Governance (0–15)
+- Adoption & Workflow (0–15)
+Each has tooltip.
+
+D) Action Card: Recommended Next Actions (Top 3 only)
+Each action has:
+- short label
+- impact badge (High/Medium/Low)
+- one-line explanation
+Rule-based suggestions:
+- If coverage low or missing_context high -> “Upload missing referenced documents”
+- If adoption low -> “Enable weekly summary reports”
+- If structure low -> “Run structured extraction / training export”
+- If retrieval low -> “Add more supporting documents for common questions”
+
+E) Scheduled Reports Card
+- Toggle enabled/disabled
+- List last_run and next_run
+- If disabled show CTA “Enable Weekly Summary”
+Tooltip: “Reports help monitor knowledge quality without manual review.”
+
+F) Training Data Preparation Card
+- “Training-ready: XX%”
+- Progress bar
+- Button “Export Training Data (JSON/CSV)”
+- Show last export time if available
+
+G) Trust Footer Disclaimer
+Show text:
+“Important: Evident supports gradual AI adoption. Scores indicate preparedness of information — not automation readiness, correctness, or compliance. Human review is recommended.”
+
+STYLE REQUIREMENTS (Premium Feel)
+- Clean white background, subtle borders, rounded corners (12–16px)
+- Soft shadow on cards
+- Calm typography (no neon)
+- Small info tooltips (ⓘ) on headings
+- Use consistent spacing and a two-column layout on desktop:
+  - Top row: Hero card full width
+  - Next row: Breakdown (left) + Actions (right)
+  - Next row: Reports (left) + Training prep (right)
+  - Footer full width
+
+DELIVERABLE
+Implement:
+- Org profile settings UI (industry + size band selector)
+- Readiness scoring and persistence
+- Benchmark band
+- Confidence indicator
+- Scheduled reports (simulated cron acceptable in Replit)
+- Training export button
+- Instrumentation events
+- Premium dashboard layout with conservative, trust-first copy + tooltips
+
+TESTS
+Add minimal tests:
+- Readiness score in 0..100
+- Confidence computes correctly for different counts
+- Benchmark returns correct range for given industry/size
+- When chat returns “Not found” it logs chat_not_found
+- When reports run it logs report_run

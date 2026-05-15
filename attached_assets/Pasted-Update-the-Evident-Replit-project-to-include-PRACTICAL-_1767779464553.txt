@@ -1,0 +1,144 @@
+Update the “Evident” Replit project to include PRACTICAL PRICING TIERS + STORAGE LIMITS + USAGE LIMITS enforced server-side.
+
+GOAL
+Add subscription-style limits (Free / Pro / Plus) to the existing Evident MVP so costs are controlled:
+- Storage caps per tier (MB/GB)
+- Monthly query caps per tier
+- Optional caps for audio/video minutes per month (to control transcription cost)
+- Clear UI messaging showing remaining quota
+This is still an MVP: no real payments yet. Implement “plan selection” locally.
+
+PRICING TIERS (MVP)
+Define 3 plans with these limits:
+
+1) FREE
+- Price: $0
+- Storage limit: 50 MB total across all uploaded files
+- Query limit: 10 questions per month
+- Media transcription: OFF (audio/video uploads blocked) OR limited to 1 minute/month (choose OFF for simplest)
+- Max file size: 10 MB per file
+- Supported types: PDF/TXT/DOCX/PNG/JPG (no audio/video)
+
+2) PRO
+- Price: $12 / month
+- Storage limit: 500 MB total
+- Query limit: 100 questions per month
+- Media transcription: ON with limit 15 minutes/month (audio+video combined)
+- Max file size: 25 MB per file
+- Supported types: all (docs/images/audio/video) with media minutes cap
+
+3) PLUS
+- Price: $24 / month
+- Storage limit: 2 GB total
+- Query limit: 500 questions per month (or “unlimited” but implement as 500 for MVP safety)
+- Media transcription: ON with limit 60 minutes/month
+- Max file size: 50 MB per file (but keep Replit hard cap at 25 MB if needed)
+- Supported types: all (docs/images/audio/video)
+
+IMPORTANT: REPLIT STABILITY LIMITS
+- Hard cap uploads at 25 MB in Replit for reliability even if plan says higher.
+- Encourage short clips for media.
+
+MVP APPROACH (NO REAL BILLING)
+- Add a simple “Plan” selector in UI (Free/Pro/Plus).
+- Store the selected plan server-side in SQLite (single-user MVP) or tied to a simple userId cookie.
+- This simulates monetization and enforces limits.
+
+DATABASE CHANGES (SQLite)
+Add tables:
+
+settings (single-user MVP):
+- key TEXT PRIMARY KEY
+- value TEXT
+
+usage_monthly:
+- id TEXT PRIMARY KEY
+- month TEXT            -- YYYY-MM
+- plan TEXT             -- FREE|PRO|PLUS
+- queries_used INTEGER
+- media_seconds_used INTEGER
+- storage_bytes_used INTEGER
+- updated_at TEXT
+
+Also update assets table:
+- size_bytes INTEGER NOT NULL
+- mime TEXT NOT NULL
+- created_at TEXT NOT NULL
+
+On every upload/chat/transcribe, update usage_monthly.
+
+MONTH RESET LOGIC
+- Determine current month as YYYY-MM.
+- If no record exists for current month, create one with zeros.
+- When month changes, new record starts at 0.
+
+ENFORCEMENT RULES (SERVER-SIDE)
+1) Upload endpoint /api/upload
+- Before accepting file:
+  - Check plan’s max file size (and Replit hard cap 25MB).
+  - Check storage_bytes_used + file.size_bytes <= plan storage limit.
+  - If over limit: return 403 with message: “Storage limit reached. Upgrade to Pro/Plus.”
+- If plan blocks audio/video:
+  - If mime starts with audio/ or video/ and plan FREE: return 403 “Media transcription available on Pro+.”
+
+2) Chat endpoint /api/chat
+- Before processing:
+  - Check queries_used < plan query limit
+  - If exceeded: return 402 or 403 with friendly message “Monthly question limit reached.”
+- On success: increment queries_used by 1.
+
+3) Media transcription ingestion
+- Before calling OpenAI transcription:
+  - Estimate duration if possible; otherwise enforce by tracking seconds from response metadata if available.
+  - If media_seconds_used >= plan cap: block and mark asset status ERROR with message to upgrade.
+- Increment media_seconds_used after transcription.
+
+UI REQUIREMENTS
+On the main page:
+- Show current plan and pricing:
+  - Free ($0), Pro ($12/mo), Plus ($24/mo)
+- Show remaining quotas:
+  - Storage used / limit
+  - Questions used / limit
+  - Media minutes used / limit (if applicable)
+- Add buttons:
+  - “Switch to Free”
+  - “Switch to Pro”
+  - “Switch to Plus”
+Switching plan updates the plan in SQLite immediately.
+
+HELPFUL MESSAGES
+- If a user hits a limit, show a clear upgrade prompt:
+  - “Upgrade to Pro for 500MB storage and 100 questions/month”
+  - “Upgrade to Plus for 2GB storage and 60 min transcription/month”
+
+OPENAI COST CONTROLS (PROMPTING)
+- Keep Responses calls small:
+  - topK default 5
+  - max output tokens moderate
+  - temperature 0–0.2
+- Cache embeddings: don’t re-embed already stored chunks.
+- For chat: only send retrieved evidence, not full documents.
+
+FILES TO UPDATE/ADD
+- server/db.js: add usage tables, helpers getPlan(), getOrCreateMonthlyUsage(), updateUsage()
+- server/routes.js:
+  - add /api/plan (GET) and /api/plan (POST) endpoints
+  - enforce limits in /api/upload and /api/chat
+- server/ingest_media.js: enforce media minutes cap
+- web/index.html + web/app.js: show pricing tiers + quota dashboard + plan switcher
+
+TESTS (MINIMAL)
+Add/extend tests:
+1) Free plan: upload >50MB should fail (simulate by setting size in test) OR test storage cap by repeated uploads.
+2) Free plan: chat >10 questions returns limit error.
+3) Pro plan: chat >100 returns limit error.
+4) Free plan: audio/video upload blocked.
+5) Pro/Plus: media transcription minutes exceed cap -> blocked.
+
+DELIVERABLE
+Implement the plan system and enforcement end-to-end with visible UI quota dashboard and friendly upgrade messages.
+Provide clear instructions to test:
+- Select Free, upload sample, ask 10 questions, 11th blocked.
+- Switch to Pro, same request allowed until 100.
+- Confirm storage usage increments with each upload.

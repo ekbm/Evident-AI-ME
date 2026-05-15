@@ -1,0 +1,41 @@
+Terms and Conditions
+Last updated: January 2026
+
+Description of Service
+Evident is an AI-powered document assistant that helps users upload files, ask questions, and receive answers with citations. The service uses artificial intelligence to analyze and summarize content from user-provided documents.
+
+Account Responsibilities
+You are responsible for maintaining the security of your account credentials
+You must provide accurate information when creating an account
+You are responsible for all activity that occurs under your account
+You must be at least 18 years old to use this service
+Acceptable Use
+You agree not to:
+
+Upload illegal, harmful, or malicious content
+Attempt to circumvent usage limits or security measures
+Use the service for unauthorized data collection
+Interfere with the service or other users' access
+Subscription Plans and Limits
+Evident offers multiple subscription tiers with varying features:
+
+Free: Limited storage and queries per month
+Pro ($12/month): Extended storage, more queries, media support
+Plus ($24/month): Higher limits, priority processing
+Premium Org ($79/month): Team features, scheduled reports, training exports
+Usage beyond plan limits may result in temporary service restrictions until the next billing cycle.
+
+Disclaimers
+Evident is provided "as is" without warranties of any kind. AI-generated responses may contain errors or inaccuracies. Users should verify important information independently. Evident does not provide legal, medical, financial, or professional advice.
+
+Limitation of Liability
+To the maximum extent permitted by law, Evident shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the service.
+
+Termination
+We may suspend or terminate your account if you violate these terms. You may cancel your subscription at any time through your account settings.
+
+Changes to Terms
+We may update these terms from time to time. Continued use of the service after changes constitutes acceptance of the new terms.
+
+Contact
+For questions about these terms, please contact us through your account settings or our support channels.

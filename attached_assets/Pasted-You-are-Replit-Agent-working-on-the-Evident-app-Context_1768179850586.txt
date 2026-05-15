@@ -1,0 +1,167 @@
+You are Replit Agent working on the Evident app.
+
+Context
+- Existing stack: React + TS + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query (frontend)
+- Node.js + Express + TypeScript + PostgreSQL + Drizzle (backend)
+- We are adding Invoice Reconciliation (Finance module) and we want to REUSE PyMuPDF (Python) extraction that already exists for contract analysis.
+
+Goal (this change)
+Add a small Python “PDF Extraction Service” that uses PyMuPDF to extract and normalize Invoice / PO / GRN data into a consistent `extracted_json` format for the reconciliation engine.
+- Keep reconciliation logic in Node/TS (as previously spec’d).
+- Python service only does: PDF -> structured-ish JSON + raw text + basic heuristics.
+- Include scanned-PDF detection and an OCR fallback hook (stubbed, not required to fully implement).
+
+Hard requirements
+- No payments, no accounting system features.
+- Extraction must return evidence anchors (page + bbox) for key fields where possible.
+- Service must be isolated behind feature flag `FEATURE_INVOICE_RECONCILIATION`.
+- Must work locally in Replit: run Node server + Python service together.
+- Add tests for Node route integration (mock python response) + small unit tests in python for scan detection.
+
+Architecture
+1) Python service (new)
+   - Folder: `services/pdf_extractor/`
+   - FastAPI server on port 8001
+   - Endpoint: POST `/extract`
+   - Input: multipart file upload (PDF) + `docType` (invoice|po|grn) + optional hints
+   - Output: normalized JSON:
+     {
+       "docType": "invoice",
+       "fields": {...},
+       "lineItems": [...],
+       "rawText": "...",
+       "anchors": { "invoiceNumber": {"page":0,"bbox":[x0,y0,x1,y1]}, ... },
+       "meta": { "isScannedLikely": false, "pages": 2 }
+     }
+
+2) Node API (existing server)
+   - Add endpoint: POST `/api/finance/extract`
+   - This endpoint forwards the uploaded file to the Python service and returns JSON.
+   - If python unavailable: return friendly error + instructions.
+
+3) Finance upload UI (existing/new)
+   - Upload PDF -> call `/api/finance/extract`
+   - Let user confirm/edit extracted fields in a “Review Extraction” step
+   - Save as `finance_documents` + typed records + line items
+   - Then run reconciliation on demand.
+
+Implementation tasks (do all)
+
+A) Python PDF Extraction Service
+1) Add dependencies
+- Create `services/pdf_extractor/requirements.txt`:
+  fastapi
+  uvicorn
+  python-multipart
+  pymupdf
+
+2) Create FastAPI app
+- `services/pdf_extractor/app.py` with:
+  - POST `/health` -> { ok: true }
+  - POST `/extract`:
+     - inputs:
+       - file: UploadFile (PDF)
+       - docType: str (invoice|po|grn)
+       - optional vendorHint, currencyHint
+     - processing:
+       - open PDF via PyMuPDF
+       - extract text blocks with coordinates:
+         page.get_text("dict") -> blocks/lines/spans with bbox
+       - build `rawText` as concatenated spans by page
+       - scanned detection:
+         - total_text_chars = len(rawText.strip())
+         - if total_text_chars < 200 OR (pages>0 and avg chars/page < 100) => isScannedLikely=true
+       - field extraction heuristics:
+         Implement simple regex + proximity search on `rawText`:
+         - invoice number: patterns like (invoice|inv)\s*(no|number|#)[:\s]*([A-Z0-9\-\/]+)
+         - PO reference: (po|purchase order)\s*(no|#)[:\s]*([A-Z0-9\-\/]+)
+         - dates: (date|invoice date|due date) ... parse as best-effort (keep string if parse fails)
+         - totals: find last occurrence of (total|amount due) and parse currency number
+         - tax: (gst|vat|tax) parse amount
+         - currency: detect AUD/USD/etc from symbols or hints
+       - line items (MVP):
+         - if a table is easily detectable: attempt a very simple row split:
+            look for repeated lines containing qty+unit price+line total numbers
+            otherwise return empty lineItems and let user add/edit in UI
+       - anchors:
+         - for each extracted field, attempt to locate the text in spans and record the first bbox match.
+         - if not found, omit anchor for that field.
+       - OCR hook (stub):
+         - if isScannedLikely == true: return meta.isScannedLikely true and include message: "OCR_REQUIRED"
+           DO NOT implement OCR fully unless trivial; just provide stub to integrate later.
+     - return JSON as described.
+
+3) Add small python tests
+- `services/pdf_extractor/test_scan_detection.py`
+  - unit test for scan detection thresholds using fake rawText lengths (no real PDF needed)
+  - keep it simple and runnable.
+
+B) Node server integration
+1) Add config
+- `server/config.ts`:
+  - `PDF_EXTRACTOR_URL` default `http://localhost:8001`
+  - feature flag `FEATURE_INVOICE_RECONCILIATION`
+
+2) Add proxy route
+- Create `server/routes/financeExtract.ts`
+  - POST `/api/finance/extract`
+  - requires auth + org scoping (same middleware as finance routes)
+  - accept multipart form upload from client: `file`, `docType`
+  - forward to Python service `/extract` using fetch + FormData
+  - handle errors:
+     - if python service unreachable: 502 with message “PDF extractor service not running”
+     - if python returns meta.isScannedLikely true and meta.code == OCR_REQUIRED:
+         return 200 with extracted partial fields + a warning banner value:
+         { warning: { code:"OCR_REQUIRED", message:"This PDF looks scanned. Extraction may be incomplete." } }
+  - return the python JSON response.
+
+3) Wire into existing finance document creation flow
+- If current upload flow creates `finance_documents` directly:
+  - modify upload UI so PDF -> extract -> user review -> then POST `/api/finance/documents` with extracted_json
+- Keep “Paste JSON” option as fallback.
+
+4) Add Node tests
+- Unit test the proxy route by mocking fetch to python service:
+  - success response pass-through
+  - unreachable python -> 502
+  - OCR_REQUIRED warning -> includes warning in response
+
+C) Frontend: “Review Extraction” step
+1) Update Finance Upload page
+- Flow:
+  - Step 1: Upload PDF and select type
+  - Step 2: Review Extraction (editable form)
+     - vendor name
+     - invoice number / PO reference / dates / currency / totals
+     - line items editable table (add/remove rows)
+  - Step 3: Save -> creates records in DB
+- UI requirements:
+  - show warning banner if OCR_REQUIRED
+  - show “Run reconciliation now” toggle after save
+
+2) Data model alignment
+- Ensure the final saved JSON matches reconciliation engine expectations:
+  - docType, vendor, invoiceNumber/poNumber, totals, lineItems array
+- Store rawText too (helps for later).
+
+D) Replit run configuration
+- Add scripts so both services run:
+  - Root `package.json`:
+    - "dev": run concurrently:
+       - node server (existing)
+       - python uvicorn:
+         `uvicorn services.pdf_extractor.app:app --host 0.0.0.0 --port 8001 --reload`
+  - If no concurrency lib exists, add `concurrently` dev dependency.
+- Add README section: “Running PDF Extractor Service”
+
+E) Quality
+- Strict typing across Node/TS
+- No `any`
+- Clean folder structure:
+  - `services/pdf_extractor/*`
+  - `server/routes/*`
+  - `client/src/pages/finance/*`
+- Ensure existing app still builds.
+
+Now implement all changes.
+Start with the Python service, then Node proxy route, then frontend “Review Extraction”, then tests, then run scripts.

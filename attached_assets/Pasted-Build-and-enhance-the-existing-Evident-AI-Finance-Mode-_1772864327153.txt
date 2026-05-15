@@ -1,0 +1,213 @@
+Build and enhance the existing Evident AI Finance Mode so it feels like a specialized document intelligence workspace for finance professionals, not a generic chatbot.
+
+GOAL
+Create a Finance workspace with separate tabs for:
+1. Accounting
+2. Audit & Assurance
+3. Tax & Compliance
+4. Hedge Funds & Investment Research
+5. CFO / Management Reporting
+
+Each tab should contain:
+- a short description of what the tab is for
+- a set of predefined prompts users can click
+- a clean workflow where the user uploads/selects documents, chooses a prompt, and gets an answer grounded only in the uploaded documents
+- citation-based answers from the selected documents
+- a polished professional UI consistent with Evident
+
+CORE PRODUCT BEHAVIOUR
+The user should:
+- upload one or more documents
+- select one or more relevant documents
+- open the Finance Mode
+- choose a tab based on their role or task
+- click a predefined prompt or edit it before submitting
+- receive a structured answer with citations from their uploaded documents only
+
+Do not present this as a stock-trading tool.
+This is a document intelligence assistant for finance and business documents.
+
+SUPPORTED DOCUMENT TYPES / USE CASES
+Design the experience around the kinds of documents these users commonly work with:
+
+Accounting:
+- invoices
+- bills
+- expense reports
+- bank statements
+- purchase records
+- payroll summaries
+- accounts receivable / payable reports
+- monthly management accounts
+- financial statements
+
+Audit & Assurance:
+- audit working papers
+- financial reports
+- supporting schedules
+- reconciliations
+- internal control documents
+- board reports
+- disclosures
+- evidence packs
+
+Tax & Compliance:
+- tax returns
+- BAS / GST / VAT filings
+- compliance reports
+- regulatory notices
+- payroll tax documents
+- deductible expense records
+- financial disclosures
+
+Hedge Funds & Investment Research:
+- investor letters
+- earnings reports
+- quarterly/annual reports
+- fund reports
+- portfolio commentary
+- management discussion documents
+- risk reports
+- capital allocation memos
+- research notes
+- credit or exposure summaries
+
+CFO / Management Reporting:
+- board packs
+- budget vs actual reports
+- forecasts
+- cash flow summaries
+- variance reports
+- departmental reports
+- strategic finance memos
+- operational performance packs
+
+TAB STRUCTURE
+
+TAB 1 — ACCOUNTING
+Short description:
+“Extract, reconcile, summarize, and review core accounting documents such as invoices, statements, expenses, and financial reports.”
+
+Predefined prompts:
+1. Extract all invoice details including vendor, date, amount, tax, and payment terms.
+2. Summarize total expenses by category and highlight unusually high costs.
+3. Compare invoices, bank statements, and expense records to identify mismatches or missing entries.
+4. Generate a quick financial snapshot from the uploaded documents covering revenue, expenses, profit, and major trends.
+5. Identify duplicate invoices, repeated charges, or unusual payment patterns.
+6. Extract key figures from the financial statements and summarize the main takeaways.
+7. Group bank statement transactions by likely category and identify anything unusual.
+8. Highlight overdue amounts, liabilities, or payment obligations found in these documents.
+
+TAB 2 — AUDIT & ASSURANCE
+Short description:
+“Support audit preparation, evidence review, cross-document verification, anomaly detection, and reporting consistency checks.”
+
+Predefined prompts:
+1. Extract financial figures and identify the supporting evidence needed for audit review.
+2. Compare the financial reports with supporting documents and flag inconsistencies.
+3. Generate an audit preparation checklist based on the uploaded documents.
+4. Identify unusual entries, outliers, or anomalies that may require further review.
+5. Compare management commentary with the financial numbers and highlight unsupported claims.
+6. List possible audit risk areas based on the documents provided.
+7. Extract references, schedules, and disclosures relevant for assurance review.
+8. Summarize control weaknesses or documentation gaps mentioned in these files.
+
+TAB 3 — TAX & COMPLIANCE
+Short description:
+“Review tax-related records, compliance documents, reporting obligations, deductible items, and possible documentation gaps.”
+
+Predefined prompts:
+1. Extract all tax obligations, deadlines, and reporting requirements mentioned in these documents.
+2. Summarize deductible expenses and tax-relevant items from the uploaded files.
+3. Identify potential compliance risks, missing information, or unsupported claims.
+4. Extract GST / VAT / BAS-relevant figures and summarize them clearly.
+5. Summarize payroll tax or employee-related tax items found in these records.
+6. Highlight missing documents or records that may be required for tax review.
+7. Extract regulatory references, obligations, and filing requirements from the uploaded documents.
+8. Generate a concise tax and compliance summary for review.
+
+TAB 4 — HEDGE FUNDS & INVESTMENT RESEARCH
+Short description:
+“Analyze financial disclosures, investor communications, risk reports, commentary, and cross-document signals to surface risks and insights before they become obvious.”
+
+Predefined prompts:
+1. Summarize the key financial and operational risks mentioned across these documents.
+2. Compare narrative commentary with the underlying financial numbers and flag contradictions.
+3. Identify language or disclosures that may signal deterioration in performance, liquidity, margins, or confidence.
+4. Extract all mentions of exposure, concentration, leverage, downside risk, or uncertainty.
+5. Compare this quarter’s commentary with prior-period commentary and identify what changed materially.
+6. Highlight early warning signals that could matter to an analyst or investment team.
+7. Summarize management tone, risk language, and any shifts in strategic priorities.
+8. Extract key figures, guidance, and risk statements into a concise analyst-style summary.
+9. Identify areas where the narrative seems stronger than the underlying numbers support.
+10. Generate a research brief covering performance signals, risk factors, and notable changes.
+
+Important:
+This tab should focus on document intelligence for research and risk reading, not investment advice or stock tips.
+
+TAB 5 — CFO / MANAGEMENT REPORTING
+Short description:
+“Turn complex finance documents into concise, decision-ready summaries for leadership, board reporting, budgeting, and internal review.”
+
+Predefined prompts:
+1. Create a board-ready financial summary highlighting performance, risks, and notable trends.
+2. Summarize revenue, costs, profit, cash flow, and any operational concerns from these documents.
+3. Identify major variances versus prior periods and explain likely causes using the document content.
+4. Generate an executive summary suitable for a CFO or leadership meeting.
+5. Highlight cost pressures, margin changes, cash risks, or working capital issues.
+6. Summarize the most important decisions or actions leadership should consider based on these documents.
+7. Extract the key metrics and convert them into a concise management snapshot.
+8. Identify themes, concerns, and opportunities across the uploaded reporting pack.
+
+UI / UX REQUIREMENTS
+- Show these tabs clearly at the top of Finance Mode.
+- Each tab should have:
+  - title
+  - one-sentence description
+  - a prompt grid or list of clickable predefined prompts
+- When a prompt is clicked, it should populate the query input.
+- The user can either submit immediately or edit the prompt first.
+- Keep upload, document selection, tab selection, prompt selection, and answer output in one intuitive workflow.
+- Make the UI feel professional and enterprise-friendly.
+- Add subtle empty-state guidance like:
+  “Upload finance documents, choose a workflow tab, and run a prompt grounded in your files.”
+- If no document is selected, show a friendly instruction to select documents before asking.
+- Answers should be structured with headings where helpful, for example:
+  - Summary
+  - Key Findings
+  - Risks / Inconsistencies
+  - Missing Information
+  - Evidence / Citations
+
+ANSWER STYLE
+Responses should:
+- stay grounded strictly in the selected uploaded documents
+- avoid speculation
+- clearly mention when evidence is missing
+- cite the relevant document excerpts / sources
+- use professional business language
+- be concise but useful
+- support cross-document reasoning where multiple files are selected
+
+EXTRA PRODUCT POSITIONING
+Within Finance Mode, add optional helper text that explains the value in a simple way:
+“Evident helps finance professionals extract, reconcile, review, and summarize complex financial documents with answers grounded in their own files.”
+
+OPTIONAL QUICK ACTIONS AREA
+Add a “Quick Actions” section above or below the tabs with 5 high-value shortcuts:
+- Financial Snapshot
+- Reconcile Documents
+- Detect Anomalies
+- Audit Summary
+- Extract Tax Obligations
+
+TECHNICAL / IMPLEMENTATION NOTES
+- Reuse the existing upload, document selection, prompt submission, and answer rendering logic where possible.
+- Only improve the Finance Mode structure and prompt experience.
+- Keep the architecture modular so more tabs can be added later.
+- Make predefined prompts easy to maintain in code, ideally from a config object or array.
+- Ensure tab content is responsive for desktop and mobile.
+- Preserve Evident’s citation-based answer system.
+
+DELIVERABLE
+Implement the updated Finance Mode UI and prompt system with these tabs, descriptions, and predefined prompt libraries so the feature feels useful for accountants, auditors, finance teams, tax reviewers, and hedge fund research workflows.

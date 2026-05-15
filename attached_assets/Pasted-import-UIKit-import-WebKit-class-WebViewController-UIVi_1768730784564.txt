@@ -1,0 +1,203 @@
+import UIKit
+import WebKit
+
+class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    
+    private var webView: WKWebView!
+    private var loadingView: UIView!
+    private var spinner: UIActivityIndicatorView!
+    private var fileUploadCompletion: (([URL]?) -> Void)?
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupLoadingView()
+        setupWebView()
+        loadWebsite()
+    }
+    
+    private func setupLoadingView() {
+        loadingView = UIView(frame: view.bounds)
+        loadingView.backgroundColor = UIColor(red: 248/255, green: 250/255, blue: 252/255, alpha: 1)
+        loadingView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        
+        let titleLabel = UILabel()
+        titleLabel.text = "Evident"
+        titleLabel.font = UIFont.systemFont(ofSize: 28, weight: .bold)
+        titleLabel.textColor = UIColor(red: 59/255, green: 130/255, blue: 246/255, alpha: 1)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        loadingView.addSubview(titleLabel)
+        
+        spinner = UIActivityIndicatorView(style: .medium)
+        spinner.color = UIColor(red: 100/255, green: 116/255, blue: 139/255, alpha: 1)
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        spinner.startAnimating()
+        loadingView.addSubview(spinner)
+        
+        NSLayoutConstraint.activate([
+            titleLabel.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
+            titleLabel.centerYAnchor.constraint(equalTo: loadingView.centerYAnchor, constant: -20),
+            spinner.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
+            spinner.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 24)
+        ])
+        
+        view.addSubview(loadingView)
+    }
+    
+    private func setupWebView() {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+        
+        webView = WKWebView(frame: view.bounds, configuration: config)
+        webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        webView.navigationDelegate = self
+        webView.uiDelegate = self
+        webView.backgroundColor = UIColor(red: 248/255, green: 250/255, blue: 252/255, alpha: 1)
+        webView.isOpaque = false
+        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+        
+        view.insertSubview(webView, belowSubview: loadingView)
+    }
+    
+    private func loadWebsite() {
+        guard let url = URL(string: "https://evident-ai.net") else { return }
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+        webView.load(request)
+    }
+    
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        UIView.animate(withDuration: 0.3) {
+            self.loadingView.alpha = 0
+        } completion: { _ in
+            self.loadingView.isHidden = true
+        }
+    }
+    
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        showError(error)
+    }
+    
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        showError(error)
+    }
+    
+    private func showError(_ error: Error) {
+        let alert = UIAlertController(
+            title: "Connection Error",
+            message: "Unable to load Evident. Please check your internet connection and try again.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Retry", style: .default) { _ in
+            self.loadWebsite()
+        })
+        present(alert, animated: true)
+    }
+    
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if navigationAction.targetFrame == nil {
+            webView.load(navigationAction.request)
+        }
+        return nil
+    }
+    
+    // MARK: - File Upload / Camera Support
+    @available(iOS 18.4, *)
+    func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {
+        fileUploadCompletion = completionHandler
+        
+        let alert = UIAlertController(title: "Upload Document", message: "Choose how to add your document", preferredStyle: .actionSheet)
+        
+        // Camera option
+        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            alert.addAction(UIAlertAction(title: "Take Photo", style: .default) { _ in
+                self.presentImagePicker(sourceType: .camera)
+            })
+        }
+        
+        // Photo Library option
+        alert.addAction(UIAlertAction(title: "Photo Library", style: .default) { _ in
+            self.presentImagePicker(sourceType: .photoLibrary)
+        })
+        
+        // Document picker for files
+        alert.addAction(UIAlertAction(title: "Browse Files", style: .default) { _ in
+            self.presentDocumentPicker()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+            completionHandler(nil)
+        })
+        
+        // iPad support
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = webView
+            popover.sourceRect = CGRect(x: webView.bounds.midX, y: webView.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        
+        present(alert, animated: true)
+    }
+    
+    private func presentImagePicker(sourceType: UIImagePickerController.SourceType) {
+        let picker = UIImagePickerController()
+        picker.sourceType = sourceType
+        picker.delegate = self
+        picker.allowsEditing = false
+        present(picker, animated: true)
+    }
+    
+    private func presentDocumentPicker() {
+        let types: [String] = ["public.item", "public.content", "public.data"]
+        let picker = UIDocumentPickerViewController(documentTypes: types, in: .import)
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        present(picker, animated: true)
+    }
+    
+    // MARK: - UIImagePickerControllerDelegate
+    
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        picker.dismiss(animated: true)
+        
+        if let image = info[.originalImage] as? UIImage {
+            // Save image to temp file
+            let tempDir = FileManager.default.temporaryDirectory
+            let fileName = "photo_\(Date().timeIntervalSince1970).jpg"
+            let fileURL = tempDir.appendingPathComponent(fileName)
+            
+            if let imageData = image.jpegData(compressionQuality: 0.8) {
+                try? imageData.write(to: fileURL)
+                fileUploadCompletion?([fileURL])
+            } else {
+                fileUploadCompletion?(nil)
+            }
+        } else {
+            fileUploadCompletion?(nil)
+        }
+        fileUploadCompletion = nil
+    }
+    
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+        fileUploadCompletion?(nil)
+        fileUploadCompletion = nil
+    }
+    
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .darkContent
+    }
+}
+
+// MARK: - Document Picker Delegate
+
+extension WebViewController: UIDocumentPickerDelegate {
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        fileUploadCompletion?(urls)
+        fileUploadCompletion = nil
+    }
+    
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        fileUploadCompletion?(nil)
+        fileUploadCompletion = nil
+    }
+}

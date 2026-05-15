@@ -1,0 +1,81 @@
+You are working in an existing Node.js + React codebase (Evident). Implement a “Student Exam Prep” feature for university lecture transcripts.
+
+GOAL
+From a transcript document (already uploaded / extracted), students can generate exam-ready study materials and have them saved inside Evident:
+1) Exam Focus
+2) Study Summary
+3) Practice Questions
+4) Flashcards
+5) Cheat Sheet (one-page bullets)
+
+UX CONSTRAINTS (VERY IMPORTANT)
+- Do NOT add a new toolbar or lots of buttons.
+- Do NOT clutter the UI.
+- Add rotating placeholder hints in the Ask input (only when empty).
+- Add subtle post-answer suggestions (small clickable text chips) under answers.
+- Replace any “Export” wording with “Save”. Use Save/Saved only.
+
+TECH STACK
+- Backend: Node.js (Express-style routes likely)
+- Frontend: React
+- Use existing auth + workspace/document permission patterns.
+- Use existing LLM provider/client already used for Q&A.
+
+PHASE 0 — RECON (DO THIS FIRST)
+1) Locate Ask/Chat UI component(s): search for PromptInput / Ask / Chat / MessageInput.
+2) Locate backend Q&A route(s): search for /api/ask, /api/chat, rag, llm.
+3) Identify how transcript text is stored and fetched by documentId.
+4) Identify DB layer pattern (Prisma/Drizzle/Knex/SQL). Follow the existing pattern.
+
+PHASE 1 — DATABASE
+Create a new table to store generated study outputs (migration required):
+Table: study_materials
+- id (uuid or serial)
+- user_id
+- workspace_id
+- source_document_id (documentId for transcript)
+- type (string enum): exam_focus | study_summary | practice_questions | flashcards | cheat_sheet
+- title (string)
+- content (JSON preferred, otherwise TEXT)
+- created_at
+
+PHASE 2 — BACKEND API (Node)
+Implement these endpoints:
+
+A) POST /api/study/generate
+Body: { workspaceId, documentId, type }
+Steps:
+- Verify auth (current user)
+- Verify permission to access workspace + document
+- Load transcript text for documentId
+- Choose prompt template based on type (see Prompt Templates below)
+- Call existing LLM client used in Q&A
+- Force JSON output; parse JSON. If parse fails, return a safe fallback object.
+- Save result into study_materials
+- Return saved record: { id, type, title, content, createdAt }
+
+B) GET /api/study?workspaceId=...&documentId=...
+Return list of saved study_materials for that transcript, newest first.
+
+C) GET /api/study/:id
+Return one study material item.
+
+ERROR HANDLING
+- Return consistent JSON error format used by existing API
+- User-friendly messages (“Transcript not found”, “No access”, “Generation failed, try again”)
+
+PHASE 3 — PROMPT TEMPLATES (STRICT JSON)
+Create server/prompts/studyPrompts.js (or .ts).
+All prompts must:
+- Use ONLY transcript content
+- If info is not present: explicitly say “Not covered in this lecture”
+- Output valid JSON ONLY (no markdown fences)
+
+Templates:
+
+1) EXAM FOCUS JSON schema:
+{
+  "exam_critical_topics":[{"topic":"", "why_it_matters":"", "evidence":""}],
+  "key_definitions":[{"term":"", "definition":""}],
+  "important_examples":[{"example":"", "supports_concept":""}],
+  "revision_priorities":{"mus_

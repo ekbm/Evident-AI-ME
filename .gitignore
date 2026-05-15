@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pythonlibs/
+
+# Build outputs
+dist/
+server/public/
+
+# Cache and temporary files
+.cache/
+.local/
+*.log
+*.tmp
+
+# Replit specific
+.replit
+.upm/
+.config/
+
+# macOS
+.DS_Store
+
+# User uploads and generated content
+uploads/
+artifacts/
+
+# Build artifacts and downloadable installers
+public/downloads/*.tar.gz
+
+# Environment and secrets (never commit)
+.env
+.env.local
+.env.production
+
+# Vite temp files
+vite.config.ts.*
+
+# Generated videos/large media
+*.tar.gz
+attached_assets/generated_videos/
+ios/App/App/public/assets/*.mp4
+
+# Large archive files (exports, parts)
+evident-*.tar.gz
+evident-part-*
+
+# Database files and SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE settings (optional - can be removed if team wants shared settings)
+.vscode/
+.idea/
+
+# Test coverage
+coverage/
+
+# OS generated files
+Thumbs.db

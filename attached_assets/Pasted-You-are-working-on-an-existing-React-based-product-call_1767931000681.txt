@@ -1,0 +1,176 @@
+You are working on an existing React-based product called Evident.
+
+GOAL
+Add a mandatory “Policy Readiness Gate” for ORGANIZATION workspaces before AI answering (RAG) is enabled. For PERSONAL/single-user workspaces, auto-apply a default safe policy and allow AI answering immediately.
+
+This must be enforced server-side (not just UI). The AI answer endpoints must refuse to respond unless policy is active for org workspaces.
+
+STACK
+- Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui
+- Data: TanStack React Query
+- Backend: Node.js + Express + TypeScript
+- DB: PostgreSQL + Drizzle ORM (use existing DB if present)
+- Auth: existing login/session system (if not present, stub with a basic user + role + org)
+
+KEY DEFINITIONS
+Workspace types:
+- PERSONAL (single user) -> policy auto-passed with “Default Safe Policy”
+- ORG (multi-user) -> policy MUST be configured and ACTIVATED by an Admin/Owner before AI answering works
+
+Workspace policy states:
+- policy_required (default for ORG)
+- policy_active (after admin completes policy setup)
+- policy_disabled (admin can disable answering)
+
+REQUIREMENTS
+
+1) DATABASE CHANGES
+Add/extend tables:
+
+workspaces
+- id (uuid)
+- org_id (uuid, nullable for personal)
+- name (string)
+- workspace_type enum: PERSONAL | ORG
+- policy_status enum: policy_required | policy_active | policy_disabled
+- policy_version_active (int, nullable)
+- created_at, updated_at
+
+org_members (if not exists)
+- org_id, user_id
+- role enum: OWNER | ADMIN | MEMBER
+
+org_policies
+- org_id
+- version (int)
+- policy_json (jsonb)
+- created_by (user_id)
+- created_at
+
+audit_logs
+- org_id
+- actor_user_id
+- action (string)
+- target_type (string)
+- target_id (string)
+- payload_json (jsonb)
+- created_at
+
+2) DEFAULT BEHAVIOR
+- When an ORG workspace is created: policy_status = policy_required, AI answering disabled.
+- When a PERSONAL workspace is created: policy_status = policy_active with “default safe policy” (stored as policy version 1 for that workspace/org or as a built-in policy object).
+
+Default safe policy should include:
+- citations_required: true
+- minimum_sources: 1
+- do_not_guess_from_non_extractable: true
+- pii_mode: redact
+- restricted_topics: [] (empty)
+- allowed_sources: all ingested content (subject to user permissions)
+- log_policy_version_used: true
+
+3) BACKEND ENFORCEMENT (MANDATORY)
+Identify the AI answer endpoint(s), e.g. POST /api/answer or /api/chat or /api/rag/ask.
+
+Before generating any answer:
+- Load workspace by workspaceId
+- If workspace_type == ORG:
+   - If policy_status != policy_active => return 403 with:
+     {
+       "error": "POLICY_REQUIRED",
+       "message": "AI answers are disabled until your organization policy is configured by an admin."
+     }
+- If workspace_type == PERSONAL:
+   - allow answering (policy_active assumed)
+
+Also enforce on any “retrieve knowledge” endpoint used by chat/RAG.
+
+Log in audit_logs when:
+- policy activated
+- policy updated
+- policy disabled
+- an answer is requested while policy is required (optional)
+
+4) POLICY SETUP UI (ORG ADMIN ONLY)
+Add a new route:
+- /workspaces/:id/policy-setup
+
+This page is shown when policy is required and the user is Admin/Owner.
+
+Policy setup MVP form (keep minimal):
+- Toggle: “Require citations for answers” (default ON)
+- Toggle: “Redact PII (emails/phones/IDs)” (default ON)
+- Toggle: “Do not answer if information is non-extractable / missing” (default ON)
+- Number: minimum_sources (default 1)
+- Textarea/list: restricted_topics (optional)
+- (Optional) Allowed sources selector (skip if too complex)
+
+Buttons:
+- “Activate Policy & Enable AI Answers” (primary)
+- “Save Draft” (optional)
+
+On activation:
+- Create new org_policies row with incremented version
+- Set workspace.policy_status = policy_active
+- Set workspace.policy_version_active = new version
+- Write audit log event
+
+Non-admin users should see a blocking screen:
+- “AI answers are disabled for this workspace until an admin completes policy setup.”
+- Show “Contact your administrator” message.
+
+5) WORKSPACE GATING UX
+When users open chat/ask screen for an ORG workspace with policy_required:
+- Replace chat composer with a blocker card:
+  - Title: “AI Answers Disabled — Policy Setup Required”
+  - Admin CTA: “Complete Policy Setup”
+  - Member text: “Ask an admin to complete setup.”
+- Still allow viewing:
+  - files/sources
+  - extractability metrics
+  - readiness dashboard
+
+6) MCP-FRIENDLY POLICY ENDPOINTS
+Add endpoints that can be used as MCP tools later:
+
+GET /api/workspaces/:id/policy
+Returns:
+{
+  "allowed": boolean,
+  "policy_status": "...",
+  "policy_version": number|null,
+  "policy": { ...policy_json... } | null,
+  "reason": "POLICY_REQUIRED" | null
+}
+
+POST /api/workspaces/:id/policy/activate (admin only)
+Activates policy (creates new version and flips state).
+
+Optional:
+POST /api/workspaces/:id/policy/disable (admin only)
+
+7) AUDIT LOGS UI (OPTIONAL BUT NICE)
+If /org/audit exists, include:
+- policy activated/updated/disabled entries
+- workspace id, actor, timestamp
+
+8) OUT OF SCOPE
+- No OCR
+- No full MCP implementation
+- No connectors
+- No complex approval workflows
+
+DELIVERABLES
+- Server-side enforced policy gate for ORG workspaces
+- Policy setup page and blocker UI
+- DB migrations/Drizzle updates
+- Seed data:
+  - 1 personal workspace (policy_active)
+  - 1 org workspace (policy_required)
+  - owner/admin/member users
+
+Make sure it runs in Replit:
+- npm run dev (frontend)
+- npm run dev:server (backend)
+- npm run db:migrate
+- npm run db:seed

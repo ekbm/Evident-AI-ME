@@ -1,0 +1,86 @@
+You are working across two codebases:
+(A) Evident Web App: React 18 + TypeScript + Vite, Tailwind, shadcn/ui, Wouter routing
+(B) Evident iOS App: SwiftUI
+
+GOAL (NOW)
+Ship the AI Readiness Q&A explainer fast for both platforms:
+1) WEB: Add a Q&A page at /ai-readiness/qa using static Q&A content (embedded in a TS file or component)
+2) iOS: Add a SwiftUI Q&A screen using embedded strings (no JSON decoding yet)
+This is for speed while iOS App Store approval is pending.
+
+WEB REQUIREMENTS
+- Add route: "/ai-readiness/qa" -> AiReadinessQaPage
+- Add component: AiReadinessQaContent (Accordion based)
+- Add a simple “AI Readiness (Q&A)” link in Help/About menu if present
+- Optional: If /ai-readiness exists, add a link/button to open the Q&A page.
+
+Web files to create:
+- src/pages/AiReadinessQaPage.tsx
+- src/components/ai-readiness/AiReadinessQaContent.tsx
+- (optional) src/components/ai-readiness/AiReadinessHelpLink.tsx
+
+Web UI:
+- Title: “AI Readiness”
+- Subtitle: “Quick answers to common questions about the readiness score.”
+- Intro line at top
+- Q&A in an Accordion (shadcn/ui)
+- Final callout card at the bottom
+
+iOS REQUIREMENTS (FASTEST / EMBEDDED STRINGS)
+- Add a SwiftUI screen “AI Readiness” that displays:
+  - a top summary intro
+  - a list of DisclosureGroups for each Q&A
+  - a final callout
+- Add a “What is this?” button next to the AI Readiness score/matrix label; tapping opens the Q&A screen in a sheet
+- Add a Settings/Help row: “AI Readiness” -> NavigationLink to the Q&A screen
+
+iOS files to create:
+- AiReadinessView.swift (main screen)
+- AiReadinessHelpLink.swift (small button that opens the sheet)
+- (optional) AiReadinessRow.swift (Settings row)
+Do NOT implement JSON loading yet. Use embedded strings in a struct array like:
+struct QAItem { let q: String; let a: String }
+
+COPY REQUIREMENT (USE VERBATIM — NO PARAPHRASING)
+Use EXACT text below for both web and iOS.
+
+Intro:
+"AI Readiness measures how safely and reliably Evident can use your documents to answer questions and extract information."
+
+Q&A items:
+1) Q: "What is AI Readiness?"
+   A: "AI Readiness measures how safely and reliably Evident can use your documents to answer questions and extract information. It is a trust indicator — how confidently AI can use the information today without guessing."
+2) Q: "Why is AI Readiness necessary?"
+   A: "AI systems are fast, but speed alone is not enough for business use. Without AI Readiness checks, AI can use outdated documents, misread scans, mix conflicting versions, or give confident answers with missing context. AI Readiness exists to prevent this and keep answers accurate, traceable, current, and safer for audits and compliance."
+3) Q: "What is AI Readiness not?"
+   A: "AI Readiness is not a judgement of your organisation. It is not a statement that your data is unusable, not a requirement to perfect every document, not a blocker that deletes or hides files, and not a promise of 100% accuracy. AI Readiness doesn’t limit access — it limits risk."
+4) Q: "How is the AI Readiness score calculated?"
+   A: "Each document is analysed across quality signals that affect reliability: structure (headings/sections/tables), content clarity (consistency and contradictions), freshness & version confidence (latest versions, duplicates, outdated flags), scan & OCR quality (if scanned), and metadata completeness (type, date/effective period, and source context). These signals combine into an overall AI Readiness score."
+5) Q: "What do the score ranges mean?"
+   A: "80–100%: Strongly AI-ready. 60–79%: Mostly reliable. 40–59%: Needs attention. Below 40%: High risk. A lower score does not mean failure — it means some information cannot be safely trusted without clarification."
+6) Q: "If my AI Readiness is 50–60%, is that bad?"
+   A: "No. Most organisations start between 40–60%. This is normal, especially with scans, legacy files, multiple versions, missing metadata, or mixed content types. A visible score is safer than silent guessing."
+7) Q: "Can AI Readiness be improved without changing documents?"
+   A: "Yes — up to a point. Using the same documents, Evident can improve readiness by reprocessing OCR, rebuilding layouts and tables, inferring structure, stabilising entities (dates and amounts), and cross-validating similar documents. This often improves readiness from ~60% to 70–85%. Beyond that, improvement requires human confirmation or source-level fixes. Evident will not invent clarity that does not exist."
+8) Q: "Are digital Word or Excel documents 100% AI-ready?"
+   A: "No. Although they are much more AI-ready than scans, digital documents may still exist in multiple versions, be outdated but valid-looking, mix purposes, miss ownership or applicability context, or contain ambiguous language. Typical ranges are 70–90% for clean Word/Excel and 90–95% for strongly governed documents. Sustained 100% is almost never."
+9) Q: "Can an organisation ever be fully AI-ready?"
+   A: "No organisation is permanently 100% AI-ready. Documents change, policies evolve, and contracts are amended. AI Readiness is dynamic, not static. The goal is confidence and control, not perfection."
+10) Q: "What happens when a document is not fully AI-ready?"
+    A: "High-readiness content is used automatically. Medium-readiness content is used cautiously. Low-readiness content may be excluded from AI answers. If an answer is incomplete, Evident clearly explains why. Documents are never deleted or hidden — only their influence on AI is controlled."
+11) Q: "Why is human input sometimes required?"
+    A: "Some information needed for safe AI use exists only in human context, such as applicability, approval status, ownership, and business intent. AI can infer and suggest, but it cannot authoritatively decide these. Missing information may need to be provided during document creation or later during an AI Readiness check."
+12) Q: "Why can’t AI Readiness be solved by technology alone?"
+    A: "AI Readiness improves fastest when organisations are motivated by faster access to trusted information, reduced review effort, lower operational or legal risk, and better AI-assisted decision-making. Without motivation, no system can force readiness. Evident supports organisations that choose to govern their knowledge responsibly."
+13) Q: "Who is responsible for AI Readiness?"
+    A: "AI Readiness is not an individual burden. Readiness is owned by the organisation. Responsibility can be assigned to teams or roles and does not rely forever on the original document creator. This ensures readiness scales beyond individuals."
+14) Q: "Where is AI Readiness enforced?"
+    A: "AI Readiness is not enforced at document creation by default because that would slow people down. Instead, readiness is enforced at AI usage time, where risk matters. If content is not ready, AI may exclude it, answers may be incomplete, and Evident will clearly explain why."
+
+Final callout:
+"AI doesn’t fail because it’s unintelligent. It fails because information was never designed for AI. Evident fixes that — transparently, responsibly, and at enterprise scale."
+
+DONE WHEN
+- Web: /ai-readiness/qa renders correctly and looks good on mobile.
+- iOS: AiReadinessView compiles, shows Q&A via DisclosureGroups, opens from “What is this?” as a sheet, and is accessible from Settings/Help.
+- No breaking changes.

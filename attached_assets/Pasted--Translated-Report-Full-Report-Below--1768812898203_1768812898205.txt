@@ -1,0 +1,178 @@
+------------------------------------
+Translated Report (Full Report Below)
+-------------------------------------
+
+Incident Identifier: AE2EDEE5-4781-4C10-9F39-49E863DE33A0
+CrashReporter Key:   9AF59D67-3B9A-CD29-0509-569572A7FBD3
+Hardware Model:      Mac14,2
+Process:             SafariViewService [35915]
+Path:                /Volumes/VOLUME/*/SafariViewService.app/SafariViewService
+Identifier:          com.apple.SafariViewService
+Version:             26.2 (8623.1.14.10.9)
+Code Type:           ARM-64 (Native)
+Role:                Unspecified
+Parent Process:      launchd_sim [35446]
+Coalition:           com.apple.CoreSimulator.SimDevice.27BD6D2B-49B5-4264-A078-0ABD1C18E65B [9170]
+Responsible Process: SimulatorTrampoline [2022]
+
+Date/Time:           2026-01-19 16:08:06.8959 +0800
+Launch Time:         2026-01-19 16:08:02.9714 +0800
+OS Version:          macOS 15.7.3 (24G419)
+Release Type:        User
+Report Version:      104
+
+Exception Type:  EXC_GUARD
+Exception Subtype: GUARD_TYPE_USER
+Exception Message: namespc 31 reason_code 0x0000000000000000
+Exception Codes: 0x600000000000001f, 0x0000000000000000
+Exception Note:  SIMULATED (this is NOT a crash)
+Termination Reason: WEBKIT 0 
+
+Triggered by Thread:  9
+
+Thread 0:
+0   libsystem_kernel.dylib        	       0x10108cb70 mach_msg2_trap + 8
+1   libsystem_kernel.dylib        	       0x10109dfac mach_msg2_internal + 72
+2   libsystem_kernel.dylib        	       0x101094c28 mach_msg_overwrite + 480
+3   libsystem_kernel.dylib        	       0x10108ced8 mach_msg + 20
+4   CoreFoundation                	       0x180455c04 __CFRunLoopServiceMachPort + 156
+5   CoreFoundation                	       0x180454dbc __CFRunLoopRun + 1128
+6   CoreFoundation                	       0x18044fcec _CFRunLoopRunSpecificWithOptions + 496
+7   GraphicsServices              	       0x192a669bc GSEventRunModal + 116
+8   UIKitCore                     	       0x186348574 -[UIApplication _run] + 772
+9   UIKitCore                     	       0x18634c79c UIApplicationMain + 124
+10  SafariViewService             	       0x100c9102c 0x100c90000 + 4140
+11  ???                           	       0x100d493d0 ???
+12  dyld                          	       0x100f62b98 start + 6076
+
+Thread 1:
+0   WebCore                       	       0x1901c3798 WebCore::ContentExtensions::Term::generateSubgraphForAtom(WebCore::ContentExtensions::NFA&, WebCore::ContentExtensions::ImmutableNFANodeBuilder<char, unsigned long long>&, unsigned int) const + 400
+1   WebCore                       	       0x1901b2624 WebCore::ContentExtensions::CombinedURLFilters::processNFAs(unsigned long, WTF::Function<bool (WebCore::ContentExtensions::NFA&&)>&&) + 10120
+2   WebCore                       	       0x1901c0e3c WebCore::ContentExtensions::compileRuleList(WebCore::ContentExtensions::ContentExtensionCompilationClient&, WTF::String&&, WTF::Vector<WebCore::ContentExtensions::ContentExtensionRule, 0ul, WTF::CrashOnOverflow, 16ul, WTF::FastMalloc>&&) + 9580
+3   WebKit                        	       0x18e12ffc4 WTF::Detail::CallableWrapper<API::ContentRuleListStore::compileContentRuleListFile(WTF::String&&, WTF::String&&, WTF::String&&, WebCore::ContentExtensions::CSSSelectorsAllowed, WTF::CompletionHandler<void (WTF::RefPtr<API::ContentRuleList, WTF::RawPtrTraits<API::ContentRuleList>, WTF::DefaultRefDerefTraits<API::ContentRuleList>>, std::__1::error_code)>)::$_0, void>::call() + 3600
+4   JavaScriptCore                	       0x199fa26e4 void WTF::dispatchWorkItem<WTF::(anonymous namespace)::DispatchWorkItem>(void*) + 32
+5   libdispatch.dylib             	       0x1801db4b0 _dispatch_client_callout + 12
+6   libdispatch.dylib             	       0x1801c9c28 _dispatch_lane_serial_drain + 984
+7   libdispatch.dylib             	       0x1801ca6e8 _dispatch_lane_invoke + 396
+8   libdispatch.dylib             	       0x1801d5534 _dispatch_root_queue_drain_deferred_wlh + 288
+9   libdispatch.dylib             	       0x1801d4c74 _dispatch_workloop_worker_thread + 692
+10  libsystem_pthread.dylib       	       0x100cb2b88 _pthread_wqthread + 288
+11  libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 2:
+0   libsystem_pthread.dylib       	       0x100cb1984 start_wqthread + 0
+
+Thread 3:
+0   libsystem_kernel.dylib        	       0x10108e680 __workq_kernreturn + 8
+1   libsystem_pthread.dylib       	       0x100cb2bd4 _pthread_wqthread + 364
+2   libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 4:
+0   libsystem_pthread.dylib       	       0x100cb1984 start_wqthread + 0
+
+Thread 5:: com.apple.uikit.eventfetch-thread
+0   libsystem_kernel.dylib        	       0x10108cb70 mach_msg2_trap + 8
+1   libsystem_kernel.dylib        	       0x10109dfac mach_msg2_internal + 72
+2   libsystem_kernel.dylib        	       0x101094c28 mach_msg_overwrite + 480
+3   libsystem_kernel.dylib        	       0x10108ced8 mach_msg + 20
+4   CoreFoundation                	       0x180455c04 __CFRunLoopServiceMachPort + 156
+5   CoreFoundation                	       0x180454dbc __CFRunLoopRun + 1128
+6   CoreFoundation                	       0x18044fcec _CFRunLoopRunSpecificWithOptions + 496
+7   Foundation                    	       0x18110be48 -[NSRunLoop(NSRunLoop) runMode:beforeDate:] + 208
+8   Foundation                    	       0x18110c068 -[NSRunLoop(NSRunLoop) runUntilDate:] + 60
+9   UIKitCore                     	       0x18609fc50 -[UIEventFetcher threadMain] + 392
+10  Foundation                    	       0x181132d14 __NSThread__start__ + 716
+11  libsystem_pthread.dylib       	       0x100cb65ac _pthread_start + 104
+12  libsystem_pthread.dylib       	       0x100cb1998 thread_start + 8
+
+Thread 6:
+0   SafariSharedUI                	       0x24472122c SafariShared::SuddenTerminationDisabler::~SuddenTerminationDisabler() + 0
+1   SafariSharedUI                	       0x244775354 std::__1::unique_ptr<SafariShared::SuddenTerminationDisabler, std::__1::default_delete<SafariShared::SuddenTerminationDisabler>>::~unique_ptr[abi:sn200100]() + 32
+2   SafariSharedUI                	       0x24478bce0 __53-[WBSSiteMetadataImageCache _dispatchDiskWriteBlock:]_block_invoke + 40
+3   libdispatch.dylib             	       0x1801c07a8 _dispatch_call_block_and_release + 24
+4   libdispatch.dylib             	       0x1801db4b0 _dispatch_client_callout + 12
+5   libdispatch.dylib             	       0x1801c9c28 _dispatch_lane_serial_drain + 984
+6   libdispatch.dylib             	       0x1801ca6e8 _dispatch_lane_invoke + 396
+7   libdispatch.dylib             	       0x1801d5534 _dispatch_root_queue_drain_deferred_wlh + 288
+8   libdispatch.dylib             	       0x1801d4c74 _dispatch_workloop_worker_thread + 692
+9   libsystem_pthread.dylib       	       0x100cb2b88 _pthread_wqthread + 288
+10  libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 7:
+0   libsystem_kernel.dylib        	       0x10108e680 __workq_kernreturn + 8
+1   libsystem_pthread.dylib       	       0x100cb2bd4 _pthread_wqthread + 364
+2   libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 8:
+0   libsystem_pthread.dylib       	       0x100cb1984 start_wqthread + 0
+
+Thread 9 Crashed:
+0   libsystem_kernel.dylib        	       0x10109a704 os_fault_with_payload + 8
+1   WebKitLegacy                  	       0x195b192d8 +[WebView initialize] + 204
+2   libobjc.A.dylib               	       0x180077278 CALLING_SOME_+initialize_METHOD + 20
+3   libobjc.A.dylib               	       0x180078014 initializeNonMetaClass + 544
+4   libobjc.A.dylib               	       0x18007940c initializeAndMaybeRelock(objc_class*, objc_object*, locker_mixin<lockdebug::lock_mixin<objc_lock_base_t>>&, bool) + 216
+5   libobjc.A.dylib               	       0x18008bca0 lookUpImpOrForward + 208
+6   libobjc.A.dylib               	       0x180072f00 _objc_msgSend_uncached + 64
+7   SafariServices                	       0x19bbc3878 +[_SFNavigationResult resultOfLoadingRequest:isMainFrame:disallowRedirectToExternalApps:preferredApplicationBundleIdentifier:redirectDecisionHandler:] + 564
+8   SafariServices                	       0x19bbc3ccc __177+[_SFNavigationResult determineResultOfLoadingRequest:isMainFrame:disallowRedirectToExternalApps:preferredApplicationBundleIdentifier:redirectDecisionHandler:completionHandler:]_block_invoke + 44
+9   libdispatch.dylib             	       0x1801c07a8 _dispatch_call_block_and_release + 24
+10  libdispatch.dylib             	       0x1801db4b0 _dispatch_client_callout + 12
+11  libdispatch.dylib             	       0x1801c9c28 _dispatch_lane_serial_drain + 984
+12  libdispatch.dylib             	       0x1801ca6e8 _dispatch_lane_invoke + 396
+13  libdispatch.dylib             	       0x1801d5534 _dispatch_root_queue_drain_deferred_wlh + 288
+14  libdispatch.dylib             	       0x1801d4c74 _dispatch_workloop_worker_thread + 692
+15  libsystem_pthread.dylib       	       0x100cb2b88 _pthread_wqthread + 288
+16  libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 10:
+0   libsystem_kernel.dylib        	       0x10108e680 __workq_kernreturn + 8
+1   libsystem_pthread.dylib       	       0x100cb2bd4 _pthread_wqthread + 364
+2   libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 11:
+0   libswiftCore.dylib            	       0x19768d920 swift_conformsToProtocolMaybeInstantiateSuperclasses(swift::TargetMetadata<swift::InProcess> const*, swift::TargetProtocolDescriptor<swift::InProcess> const*, bool)::$_1::operator()((anonymous namespace)::ConformanceSection const&) const::'lambda'(swift::TargetProtocolConformanceDescriptor<swift::InProcess> const&)::operator()(swift::TargetProtocolConformanceDescriptor<swift::InProcess> const&) const + 616
+1   libswiftCore.dylib            	       0x19768c84c swift_conformsToProtocolMaybeInstantiateSuperclasses(swift::TargetMetadata<swift::InProcess> const*, swift::TargetProtocolDescriptor<swift::InProcess> const*, bool) + 2952
+2   libswiftCore.dylib            	       0x19768a958 swift_conformsToProtocolWithExecutionContext + 68
+3   libswiftCore.dylib            	       0x1976364c4 swift::_conformsToProtocol(swift::OpaqueValue const*, swift::TargetMetadata<swift::InProcess> const*, swift::TargetProtocolDescriptorRef<swift::InProcess>, swift::TargetWitnessTable<swift::InProcess> const**, swift::ConformanceExecutionContext*) + 48
+4   libswiftCore.dylib            	       0x197688d78 swift::_checkGenericRequirements(__swift::__runtime::llvm::ArrayRef<swift::GenericParamDescriptor>, __swift::__runtime::llvm::ArrayRef<swift::TargetGenericRequirementDescriptor<swift::InProcess>>, __swift::__runtime::llvm::SmallVectorImpl<void const*>&, std::__1::function<void const* (unsigned int, unsigned int)>, std::__1::function<void const* (unsigned int, unsigned int)>, std::__1::function<swift::TargetWitnessTable<swift::InProcess> const* (swift::TargetMetadata<swift::InProcess> const*, unsigned int)>, swift::ConformanceExecutionContext*) + 6456
+5   libswiftCore.dylib            	       0x1976870fc swift::TargetProtocolConformanceDescriptor<swift::InProcess>::getWitnessTable(swift::TargetMetadata<swift::InProcess> const*, swift::ConformanceExecutionContext&) const + 468
+6   libswiftCore.dylib            	       0x19768c778 swift_conformsToProtocolMaybeInstantiateSuperclasses(swift::TargetMetadata<swift::InProcess> const*, swift::TargetProtocolDescriptor<swift::InProcess> const*, bool) + 2740
+7   libswiftCore.dylib            	       0x19768a3f8 swift_conformsToProtocol + 60
+8   AttributeGraph                	       0x1c47a8574 AG::LayoutDescriptor::Builder::should_visit_fields(AG::swift::metadata const*, bool) + 324
+9   AttributeGraph                	       0x1c47a9138 AG::LayoutDescriptor::make_layout(AG::swift::metadata const*, AGComparisonMode, AG::LayoutDescriptor::HeapMode) + 96
+10  AttributeGraph                	       0x1c47a94a0 AG::(anonymous namespace)::TypeDescriptorCache::fetch(AG::swift::metadata const*, unsigned int, AG::LayoutDescriptor::HeapMode, int) + 376
+11  AttributeGraph                	       0x1c47a8468 AG::LayoutDescriptor::Builder::should_visit_fields(AG::swift::metadata const*, bool) + 56
+12  AttributeGraph                	       0x1c47a8314 AG::LayoutDescriptor::Builder::visit_element(AG::swift::metadata const*, AG::swift::metadata::ref_kind, unsigned long, unsigned long) + 116
+13  AttributeGraph                	       0x1c4791c2c AG::swift::metadata_visitor::visit_field(AG::swift::metadata const*, AG::swift::field_record const&, unsigned long, unsigned long) + 132
+14  AttributeGraph                	       0x1c47913dc AG::swift::metadata::visit(AG::swift::metadata_visitor&) const + 780
+15  AttributeGraph                	       0x1c47a9148 AG::LayoutDescriptor::make_layout(AG::swift::metadata const*, AGComparisonMode, AG::LayoutDescriptor::HeapMode) + 112
+16  AttributeGraph                	       0x1c47aad84 AG::(anonymous namespace)::TypeDescriptorCache::drain_queue(void*) + 356
+17  libdispatch.dylib             	       0x1801db4b0 _dispatch_client_callout + 12
+18  libdispatch.dylib             	       0x1801f6824 <deduplicated_symbol> + 28
+19  libdispatch.dylib             	       0x1801d3d58 _dispatch_root_queue_drain + 916
+20  libdispatch.dylib             	       0x1801d4510 _dispatch_worker_thread2 + 252
+21  libsystem_pthread.dylib       	       0x100cb2b4c _pthread_wqthread + 228
+22  libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 12:
+0   libsystem_pthread.dylib       	       0x100cb1984 start_wqthread + 0
+
+Thread 13:
+0   libsystem_kernel.dylib        	       0x10108e680 __workq_kernreturn + 8
+1   libsystem_pthread.dylib       	       0x100cb2bd4 _pthread_wqthread + 364
+2   libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 14:
+0   libsystem_kernel.dylib        	       0x10108e680 __workq_kernreturn + 8
+1   libsystem_pthread.dylib       	       0x100cb2bd4 _pthread_wqthread + 364
+2   libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 15:
+0   libsystem_kernel.dylib        	       0x10108e680 __workq_kernreturn + 8
+1   libsystem_pthread.dylib       	       0x100cb2bd4 _pthread_wqthread + 364
+2   libsystem_pthread.dylib       	       0x100cb198c start_wqthread + 8
+
+Thread 16:: JavaScriptCore libpas scavenger
+0   libsystem_kernel.dylib        	       0x101090014 __psynch_cvwait + 8
+1   libsystem_pthread.dylib       	       0x10

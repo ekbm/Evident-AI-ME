@@ -1,0 +1,176 @@
+You are Replit Agent working on the Evident app (React + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query; Node/Express/TS backend). We want to add a Help experience with BOTH:
+(A) Ask a question (LLM-assisted routing to help topics)
+(B) Browse / Quick actions (no question required)
+
+Goal
+Implement a “Help” top-level navigation item placed in the primary sidebar/nav (global, always visible). Help must be one-click away from anywhere in the app and must not be buried in Settings. Add optional contextual “?” links in key pages later, but for now implement the main Help page + deep links.
+
+Hard requirements
+- Help must be accessible from the primary navigation (sidebar) as “Help”.
+- Help content must be structured (not a free-form chatbot). LLM is used only to map user queries to existing help topics (“intent router”), never to invent instructions.
+- Help answers must include: short explanation + deep link(s) to the exact screen + 3–5 steps.
+- Help must respect Intelligence Packs entitlements:
+  - Show Finance help topics only if Finance pack enabled.
+  - Show Legal help topics only if Legal pack enabled.
+- Must support both modes:
+  (A) Ask: user types a question
+  (B) Browse: quick actions + browse by area
+- Avoid external URLs. Use internal routes only.
+- App Store safe wording (no “legal advice”, no payment processing claims).
+
+Deliverables
+1) Shared help topic schema + seed topics (Core + Finance + Legal)
+2) Backend endpoints:
+   - GET /api/help/topics (returns only topics user is entitled to see)
+   - POST /api/help/ask (maps user query -> top matching topics + response payload)
+3) Client Help page at /help with both Ask + Browse
+4) Sidebar/nav link “Help” -> /help
+5) “Contextual Help” hooks (minimal): a reusable `HelpLink` component that can be placed later (not required to wire everywhere now)
+6) Tests (basic) for topic filtering and ask routing
+
+========================================================
+A) DATA MODEL / SHARED TYPES
+========================================================
+Create `shared/help.ts`:
+
+Types:
+- `HelpArea = "core" | "finance" | "legal" | "account" | "packs"`
+- `HelpTopic`:
+   id: string
+   area: HelpArea
+   title: string
+   description: string
+   steps: string[]              // 3–6 short steps
+   routes: { label: string; path: string }[]   // deep links
+   tags: string[]               // synonyms/intents
+   packRequired?: "finance" | "legal"          // undefined = core
+   priority?: number            // default 0
+
+- `HelpAskResult`:
+   query: string
+   matches: { topicId: string; score: number }[]
+   answer: { title: string; body: string; routes: {label:string; path:string}[]; steps: string[] }
+
+Create `server/help/topics.ts` seed list (in code, not DB for MVP):
+Include at minimum these topics (use the exact routes below; if route differs in your app, add aliases/redirects):
+CORE
+- Upload files to Evident -> routes: /upload (or your existing upload route)
+- Ask questions with sources -> routes: /ask
+- Manage Knowledge Spaces -> routes: /spaces
+- Intelligence Packs overview -> routes: /packs and /settings/packs
+FINANCE (packRequired=finance)
+- Upload an invoice / PO / GRN -> routes: /finance/upload
+- Run reconciliation -> routes: /finance/reconciliations
+- Review discrepancies -> routes: /finance/reconciliations (and detail page pattern)
+- Correct extracted invoice data -> routes: /finance/invoices (and review extraction if exists)
+- Export reconciliation -> routes: /finance/reconciliations
+LEGAL (packRequired=legal)
+- Upload a contract -> routes: /legal/contracts/upload (or /legal/contracts)
+- Analyse a contract -> routes: /legal/contracts
+- Review clauses & risks -> routes: /legal/contracts
+- Export analysis -> routes: /legal/contracts
+ACCOUNT/PACKS
+- Enable packs -> routes: /settings/packs
+- Troubleshooting login -> routes: /settings/account (or your account route)
+
+Each topic should have:
+- short description (1–2 sentences)
+- 3–5 steps max
+- tags array with synonyms (e.g., ["reconcile", "invoice match", "3-way match", "po", "grn"])
+
+========================================================
+B) SERVER: ENTITLEMENT-AWARE TOPIC FILTERING
+========================================================
+Assume you already have /api/entitlements returning enabled packs (finance/legal).
+Implement:
+- GET `/api/help/topics`
+  - Auth required
+  - Reads entitlements
+  - Filters topics:
+     - Always include packRequired undefined (core)
+     - Include finance topics only if finance pack enabled
+     - Include legal topics only if legal pack enabled
+  - Returns grouped by area for easy UI rendering:
+     { areas: { core: HelpTopic[], finance: HelpTopic[], legal: HelpTopic[], packs: HelpTopic[], account: HelpTopic[] } }
+
+========================================================
+C) SERVER: ASK ROUTER (NO FREE-FORM HALLUCINATION)
+========================================================
+Implement:
+- POST `/api/help/ask`
+  body: { query: string }
+  behavior:
+   1) Fetch the same filtered topics as above.
+   2) Compute a relevance score per topic using deterministic matching first:
+      - tokenize query (lowercase, split on non-alphanum)
+      - score for tag matches, title matches, area matches
+      - add small boost if exact phrase match
+   3) OPTIONAL: If you have an LLM already wired, you may use it ONLY to choose among top N topics.
+      - The LLM must receive the candidate topic titles + descriptions + routes only.
+      - The LLM must return ONLY topicId(s), no prose.
+      - If LLM fails, fall back to deterministic scoring.
+   4) Build the final response from the selected topic content (NOT LLM-generated instructions):
+      - answer.title = topic.title
+      - answer.body = topic.description
+      - answer.steps = topic.steps
+      - answer.routes = topic.routes
+   5) Return HelpAskResult with top 3 matches.
+
+Important: The instructions shown to the user must come from the topic object, not from the model.
+
+========================================================
+D) CLIENT: HELP PAGE (/help) WITH MODE A + B
+========================================================
+1) Add nav link in primary sidebar:
+- Label: “Help”
+- Icon: questionmark-circle (lucide)
+- Route: /help
+- Always visible.
+
+2) Create `client/src/pages/help/HelpPage.tsx`:
+Layout:
+- Page title “Help”
+- Section 1: Ask
+  - input placeholder: “Ask how to use a feature… (e.g., ‘How do I reconcile an invoice?’)”
+  - button “Search”
+  - on submit: POST /api/help/ask
+  - display result card:
+     - title
+     - description
+     - steps list
+     - route buttons (deep links)
+  - also show “Top matches” list (other 2 topics)
+
+- Section 2: Quick actions (Mode B)
+  - Render 4–6 action cards as deep links:
+     - “Upload files” -> /upload
+     - “Ask a question” -> /ask
+     - If finance enabled: “Upload invoice” -> /finance/upload; “Run reconciliation” -> /finance/reconciliations
+     - If legal enabled: “Analyse a contract” -> /legal/contracts
+
+- Section 3: Browse by area
+  - Accordion or tabs: Core, Finance (if enabled), Legal (if enabled), Packs, Account
+  - Each lists topic titles; clicking opens a right-side panel or dialog with the topic details and links.
+
+UI components:
+- shadcn/ui: Card, Button, Input, Tabs/Accordion, Badge, Skeleton, Dialog, Toast
+- Show loading skeleton while fetching topics.
+- Empty states: If no pack topics, hide that area.
+
+3) Add `HelpLink` component (for future contextual help)
+- `client/src/components/help/HelpLink.tsx`
+  - props: { topicId?: string; queryPreset?: string; label?: string }
+  - opens /help with either:
+     - `?topic=...` (auto-open that topic)
+     - or `?q=...` (prefill query input)
+- Update HelpPage to read query params and prefill/open.
+
+========================================================
+E) ROUTE WIRING
+========================================================
+- Add Wouter route: `/help` -> HelpPage
+- Ensure /packs and /settings/packs routes exist; if not, create stubs or adjust.
+
+========================================================
+F) COPY SAFETY
+===============================

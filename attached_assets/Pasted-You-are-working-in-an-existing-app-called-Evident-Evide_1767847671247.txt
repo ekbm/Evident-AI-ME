@@ -1,0 +1,196 @@
+You are working in an existing app called “Evident”.
+Evident ingests documents (uploads now; later NAS/SMB/folders) and runs:
+1) AI-Readiness Scan
+2) Optional “Make AI-Ready” preparation
+3) Extraction/RAG (gated by readiness + governance)
+
+TASK:
+Add an Owner/Author remediation workflow to handle documents where “author/owner not found” appears after AI scan.
+
+IMPORTANT CONCEPTS (DO NOT MIX THEM):
+- sourceAuthor: who originally wrote the document (often unknown). This should only come from metadata/content inference and may remain null.
+- assignedOwner: who is responsible for the document inside Evident (governance). This can be assigned by user or system and should be set for every document (at least to a system “Intake” owner).
+
+Goal:
+After AI scan, if documents have missing sourceAuthor and/or missing assignedOwner, the UI should prompt to:
+- assign a default “System Intake” owner for all missing-owner docs (fast path)
+- optionally assign per folder or per selected docs (recommended path)
+- keep sourceAuthor empty if unknown (do NOT fabricate author)
+
+WHY:
+We want to process “unowned” docs safely:
+- allow AI preparation (OCR/cleanup/structure)
+- allow private extraction for uploader
+- but block “promote to org-wide knowledge / shared RAG” until assignedOwner is set (or until moved out of Intake)
+
+TECH STACK (existing):
+Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query
+Backend: Node.js + Express + TypeScript
+DB: PostgreSQL + Drizzle ORM
+
+--------------------------------------------------------------------
+DATA MODEL CHANGES (Drizzle) — MUST IMPLEMENT
+--------------------------------------------------------------------
+
+1) Extend documents table:
+- sourceAuthor: text nullable
+- assignedOwnerType: enum('SYSTEM','USER','TEAM') NOT NULL default 'SYSTEM'
+- assignedOwnerId: text NOT NULL default 'EVIDENT_INTAKE'  // points to the system intake owner
+- ownerDisplayName: text NOT NULL default 'Evident Intake (Unassigned)'
+- ownerAssignedAt: timestamp nullable
+- ownerAssignedBy: text nullable  // user id or 'system'
+
+2) Add owners table (simple now, expandable later):
+owners:
+- id (text primary key)  // e.g. 'EVIDENT_INTAKE', user ids, team ids
+- type enum('SYSTEM','USER','TEAM')
+- displayName text
+- createdAt timestamp
+
+Seed owner row:
+- id='EVIDENT_INTAKE'
+- type='SYSTEM'
+- displayName='Evident Intake (Unassigned)'
+
+3) Readiness scans table must include issues and must detect:
+- missingSourceAuthor: boolean
+- missingAssignedOwner: boolean (true if assignedOwnerId is null/empty; but in our design default prevents null; still treat Intake as “unassigned bucket”)
+Add derived flags into readiness scan payload:
+- ownerBucket: 'ASSIGNED' | 'INTAKE_UNASSIGNED'
+Where:
+- INTAKE_UNASSIGNED if assignedOwnerId === 'EVIDENT_INTAKE'
+
+--------------------------------------------------------------------
+READINESS ISSUE GENERATION RULES — ADD THESE
+--------------------------------------------------------------------
+When computing issues from metrics:
+- If sourceAuthor is null/empty:
+  issue: "Author not found in file metadata/content." severity=LOW action="Optional: assign Owner for governance"
+- If assignedOwnerId === 'EVIDENT_INTAKE':
+  issue: "Owner not assigned (currently in Intake)." severity=MED action="Assign Owner"
+
+This should appear in the IssuesList after scan.
+
+--------------------------------------------------------------------
+GOVERNANCE / GATING RULES — MUST IMPLEMENT
+--------------------------------------------------------------------
+
+1) AI Preparation (Make AI-Ready):
+- Allowed even if assignedOwnerId === 'EVIDENT_INTAKE'
+
+2) Extraction/RAG:
+- Private extraction (for the uploader) is allowed even if in Intake
+- Org-wide / shared RAG must be blocked if in Intake:
+  Add a flag in extract endpoint options:
+  - scope: 'PRIVATE' | 'ORG_SHARED'
+Rules:
+  - If scope === 'ORG_SHARED' and assignedOwnerId === 'EVIDENT_INTAKE' -> return 403 with error:
+    { code: 'OWNER_REQUIRED', message: 'Assign an Owner before using this document in shared knowledge.' }
+
+3) Add an action: “Promote to Shared Knowledge”
+- This action must require non-intake owner.
+- If intake owner, show modal prompting Owner assignment.
+
+--------------------------------------------------------------------
+API ENDPOINTS (Express) — MUST IMPLEMENT
+--------------------------------------------------------------------
+
+Owners:
+- GET /api/owners -> list owners (at least the system intake; later users/teams)
+- POST /api/owners/seed-intake -> idempotent seed (or do in migration)
+
+Owner assignment:
+- POST /api/documents/:id/assign-owner
+  body: { ownerId: string, ownerType: 'SYSTEM'|'USER'|'TEAM', ownerDisplayName?: string }
+  Behavior:
+   - Update documents.assignedOwner*
+   - Set ownerAssignedAt = now
+   - Set ownerAssignedBy = currentUserId or 'system'
+
+Bulk assignment:
+- POST /api/documents/assign-owner-bulk
+  body: { documentIds: string[], ownerId: string, ownerType: ..., ownerDisplayName?: string }
+
+Readiness scan:
+- POST /api/readiness/scan (documentId)
+  Include in response:
+   - sourceAuthor
+   - assignedOwnerId + ownerDisplayName
+   - ownerBucket
+   - issues include "Owner not assigned" if in Intake
+
+Extraction gate update:
+- POST /api/extract
+  body: { documentId, scope: 'PRIVATE'|'ORG_SHARED', options... }
+  enforce OWNER_REQUIRED rule above
+
+--------------------------------------------------------------------
+FRONTEND UX (React + shadcn/ui) — MUST IMPLEMENT
+--------------------------------------------------------------------
+
+1) Readiness Results page: /documents/:id/readiness
+- Show existing readiness score + issues.
+- If issue includes "Owner not assigned (currently in Intake)":
+  Show a prominent banner card:
+  Title: "Assign an Owner to improve governance"
+  Buttons:
+   - "Assign Owner" (opens modal)
+   - "Keep in Intake" (dismiss)
+  Also show a dropdown of owners and a quick action:
+   - "Set default owner for missing-owner docs in this folder" (bulk assign by folder filter if available)
+   - "Apply to selected docs" (on list views)
+
+2) Document list page: /documents
+- Add filter chips:
+  - Owner: Intake (Unassigned)
+  - Owner: Assigned
+- Add bulk selection and bulk action:
+  - "Assign Owner" (modal)
+- Add column/row detail showing:
+  - ownerDisplayName
+  - badge if Intake
+
+3) Owner assignment modal component (reusable):
+- Owner dropdown populated from GET /api/owners
+- Options:
+  - Apply to: single doc / selected docs / all in Intake (within current view)
+- Copy text:
+  - "Owner is for accountability inside Evident. Author remains unchanged."
+
+4) Dashboards (lightweight v1):
+- Add a small card widget:
+  - "Unowned docs in Intake: N"
+  - "Owner coverage: X%"
+  - Link to filtered documents view
+
+TanStack Query:
+- Use mutations for assign-owner endpoints
+- Invalidate queries: documents list, document detail, readiness scans
+
+--------------------------------------------------------------------
+SCORING TWEAK (small but visible) — UPDATE FORMULA
+--------------------------------------------------------------------
+In MetadataSubscore:
+- Keep hasOwner as “assigned owner NOT in Intake”.
+Define:
+  hasAssignedOwner = assignedOwnerId !== 'EVIDENT_INTAKE'
+  owner = hasAssignedOwner ? 1 : 0
+- sourceAuthor remains separate and should not heavily affect score.
+
+So metadata = 0.35*title + 0.25*date + 0.25*owner + 0.15*ver
+
+This makes “Owner assignment” improve readiness score modestly.
+
+--------------------------------------------------------------------
+DELIVERABLES
+--------------------------------------------------------------------
+- DB migration + seed intake owner
+- Backend endpoints + gating changes
+- Frontend pages + components + bulk assign
+- Update readiness scan output + issue generation
+- Unit tests for:
+  - ownerBucket detection
+  - OWNER_REQUIRED gating for ORG_SHARED scope
+  - metadata score change when owner assigned vs intake
+
+Implement end-to-end in the existing codebase.

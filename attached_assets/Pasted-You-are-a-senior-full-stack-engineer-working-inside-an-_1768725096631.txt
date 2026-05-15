@@ -1,0 +1,234 @@
+You are a senior full-stack engineer working inside an existing Node.js + React (TypeScript) application called “Evident”.
+
+GOAL
+Implement an OPTIONAL, PERMISSION-GATED “External Enrichment” feature that:
+- keeps Evident strictly document-first,
+- asks user permission before any external search,
+- uses ONLY trusted public sources,
+- returns answers with citations,
+- supports both button-based and voice-based confirmation,
+- improves UX when answers are missing or incomplete,
+- does NOT alter original document content.
+
+This feature must be implemented as a SIDE FEATURE that can be disabled without affecting core functionality.
+
+--------------------------------------------------
+CORE PRINCIPLES (NON-NEGOTIABLE)
+--------------------------------------------------
+1) Document-first ALWAYS
+- Default answers must come ONLY from the selected uploaded document(s).
+- External data must NEVER be used silently.
+- External content must NEVER be mixed into original OCR or document truth.
+
+2) External enrichment is:
+- OFF by default
+- User-approved per question or per document
+- Clearly labeled as “External context (trusted sources)”
+- Always cited
+
+3) Never send full document content to external sources.
+Only use:
+- the user’s question
+- minimal keywords or section titles if needed
+
+--------------------------------------------------
+FEATURE BEHAVIOR
+--------------------------------------------------
+
+A) POST-ANSWER ENRICHMENT BUTTON (UI)
+After every document-based answer, evaluate answer confidence.
+
+If:
+- information is missing or partial, OR
+- the answer is “not found in document”, OR
+- the user asked “what is”, “explain”, “example”, “best practice”, “ELI5”
+
+Then show a SECONDARY button below the answer:
+
+Button label:
+“Add trusted external context (citations)”
+
+This button:
+- must NOT be primary
+- must NOT auto-trigger search
+- must ask permission before searching
+
+--------------------------------------------------
+B) PERMISSION FLOW (TEXT + VOICE)
+--------------------------------------------------
+
+When the button is clicked OR voice trigger is detected:
+
+Show modal (or speak, for voice):
+“I can search trusted public sources and include citations.
+I won’t share your document.
+Do you want me to continue?”
+
+Options:
+- Allow once
+- Always allow for this document
+- Cancel
+
+Persist per-document preference:
+externalSearchPolicy = ASK | ALLOW | BLOCK
+Default = ASK
+
+--------------------------------------------------
+C) VOICE INTERACTION BEHAVIOR
+--------------------------------------------------
+
+If voice mode is active:
+
+1) User uploads image/document → system processes OCR immediately
+2) System says:
+   “Ready. Ask a question about this document.”
+3) User asks a question via microphone
+
+If answer is not found or incomplete, system MUST SPEAK:
+“I can’t find this in your document.
+I can explain it using trusted public sources with citations.
+Would you like me to do that?”
+
+Wait for explicit “Yes” / “No” before proceeding.
+
+--------------------------------------------------
+D) ELI5 / SIMPLIFICATION LOGIC
+--------------------------------------------------
+
+If the user asks:
+“Explain like I’m five” or similar:
+
+1) Attempt simplification using document content ONLY.
+2) If document does not contain enough info:
+   - Clearly say so.
+   - Offer external explanation with permission.
+
+If external enrichment is approved:
+- Explain the GENERAL concept simply (ELI5 style)
+- Still include citations
+- Clearly label as “External context”
+
+Do NOT pretend missing info was in the document.
+
+--------------------------------------------------
+E) RESPONSE STRUCTURE (MANDATORY)
+--------------------------------------------------
+
+All responses must follow this structure:
+
+1) “From your document”
+   - Answer using only uploaded content
+   - Include page/section references if available
+   - If not found, explain what was checked
+
+2) “External context (trusted sources)” (ONLY if allowed)
+   - Simplified explanation
+   - Examples or standards
+   - Inline citation markers [1], [2], etc.
+
+Never merge these sections.
+Never blur the source of truth.
+
+--------------------------------------------------
+BACKEND IMPLEMENTATION (NODE.JS)
+--------------------------------------------------
+
+Create new routes:
+
+1) POST /api/enrichment/preview
+Input:
+{ docId, question, allowExternal }
+
+Behavior:
+- If allowExternal=false:
+  return { shouldAskPermission: true }
+- If allowExternal=true:
+  - run trusted web search
+  - fetch & extract snippets
+  - generate summary WITH citations
+
+Return:
+{
+  externalSummary,
+  citations: [{ title, url, publisher, snippet }],
+  safetyNotes,
+  suggestedTags
+}
+
+2) POST /api/enrichment/attach
+- Save enrichment as a linked record
+- DO NOT modify original document text
+
+3) GET /api/documents/:docId/enrichments
+
+--------------------------------------------------
+TRUSTED SOURCES ONLY
+--------------------------------------------------
+
+Create config/trustedSources.ts:
+- allowDomains (gov, standards, universities, major vendors)
+- blockedDomains
+- maxSources (default 5)
+- recencyDays (default 365)
+
+Discard any result not in allowDomains.
+
+--------------------------------------------------
+SEARCH PROVIDER
+--------------------------------------------------
+
+Implement pluggable SearchProvider interface.
+If no API key is configured:
+- Return a safe error: “Search provider not configured”
+
+Add:
+- timeouts
+- concurrency limits
+- in-memory caching (10 min)
+
+--------------------------------------------------
+LLM COMPOSITION RULES
+--------------------------------------------------
+
+When generating external summaries:
+- Never invent citations
+- Clearly state disagreements if sources conflict
+- Use simple language if ELI5 requested
+- Reference citations inline [1], [2]
+
+--------------------------------------------------
+LOGGING & SAFETY
+--------------------------------------------------
+
+Log:
+- userId
+- docId
+- query
+- domains used
+- timestamp
+
+Add rate limits (e.g. 20 enrichment previews/day).
+
+--------------------------------------------------
+FRONTEND (REACT)
+--------------------------------------------------
+
+- Add secondary “Add trusted external context (citations)” button
+- Add permission modal
+- Add “Enrichments” tab per document
+- Add small style selector:
+  Normal | Short | Explain simply | Step-by-step
+
+--------------------------------------------------
+FINAL REQUIREMENTS
+--------------------------------------------------
+
+- Core Evident functionality must work unchanged if this feature is disabled.
+- Feature must be cleanly modular.
+- Update README with:
+  - how to configure search provider
+  - how trusted sources work
+- Do NOT redesign the entire app.
+- Focus on correctness, trust, and clarity.
+
+Now implement this end-to-end.

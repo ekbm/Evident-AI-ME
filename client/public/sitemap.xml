@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://evident-ai.net/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://evident-ai.net/pricing</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://evident-ai.net/students</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://evident-ai.net/students-graduates</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://evident-ai.net/educators</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://evident-ai.net/finance</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://evident-ai.net/legal-landing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://evident-ai.net/hr</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://evident-ai.net/professionals</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://evident-ai.net/enterprise</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://evident-ai.net/about</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://evident-ai.net/use-cases</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://evident-ai.net/packs</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://evident-ai.net/help</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://evident-ai.net/faq</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://evident-ai.net/tutorials</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://evident-ai.net/demo</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://evident-ai.net/blog</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://evident-ai.net/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://evident-ai.net/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://evident-ai.net/ai-disclaimer</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://evident-ai.net/security</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>

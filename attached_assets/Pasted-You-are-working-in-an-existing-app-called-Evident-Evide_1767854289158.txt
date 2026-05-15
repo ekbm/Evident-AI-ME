@@ -1,0 +1,254 @@
+You are working in an existing app called “Evident”.
+Evident already supports: document upload, AI readiness scan, issues list, and “Make AI-Ready” preparation pipeline (or stubs).
+
+Goal:
+Implement “Pilot Mode v1” so organisations can safely test Evident with a small scope and real documents.
+Pilot Mode must be available for testing now, without building full enterprise governance.
+
+Tech Stack (existing):
+Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query
+Backend: Node.js + Express + TypeScript
+DB: PostgreSQL (Drizzle)
+
+IMPORTANT PRINCIPLE:
+Pilot Mode is NOT a separate product. It is a mode that applies guardrails + defaults to the same engine.
+Same upload/scan/prep/extract — but stricter gating, limited scope, and clearer UI.
+
+DO NOT implement StoreKit purchases.
+DO implement mode switching + pilot screens + pilot gating rules + minimal “request assessment/expansion” lead capture.
+
+--------------------------------------------------------------------
+1) MODE FOUNDATION (must-have)
+--------------------------------------------------------------------
+
+Add an application-level mode:
+appMode: 'WORKSPACE' | 'PILOT'
+
+Persistence:
+- Store in localStorage (v1)
+- If user profile endpoint exists, also store server-side (optional)
+
+Onboarding:
+- If no mode set, route to /onboarding to choose:
+  - “Upload & Ask” -> WORKSPACE
+  - “Start an AI Pilot” -> PILOT
+(Use existing onboarding copy if already added.)
+
+Global UI:
+- When appMode === PILOT, show a “Pilot Mode” badge in the top header (always visible).
+- Add a subtle info tooltip:
+  “Pilot Mode is a controlled scope for safe testing. Data is isolated to this pilot.”
+
+Settings:
+- Add “Usage Mode” section showing current mode + “Change” button (routes to /onboarding).
+
+--------------------------------------------------------------------
+2) PILOT SCOPE (limited by design)
+--------------------------------------------------------------------
+
+Pilot Mode requires a “pilot scope” record.
+
+Pilot Scope v1 (minimal):
+- pilotId
+- name (default: “Organisation Pilot”)
+- createdAt
+- scopeType: 'UPLOADS' (v1 only; future: NAS/SMB/Drive)
+- limits:
+  - maxDocuments = 200 (config)
+  - maxTotalSizeMB = 500 (config)
+- status: ACTIVE
+
+DB (Drizzle):
+Create table: pilots
+- id (uuid)
+- name (text)
+- scopeType enum('UPLOADS') // expand later
+- maxDocuments int
+- maxTotalSizeMB int
+- createdAt timestamp
+- status enum('ACTIVE','PAUSED') default 'ACTIVE'
+
+Create table: pilot_documents
+- pilotId
+- documentId
+- addedAt timestamp
+
+Rules:
+- In PILOT mode, uploads must attach documents to the active pilot.
+- Enforce pilot limits on upload:
+  - if exceeds maxDocuments or size, return 403 with a helpful error and “Request expansion” CTA.
+
+Backend endpoints:
+- POST /api/pilot/init -> creates (or returns) active pilot for current user/org
+- GET /api/pilot -> returns active pilot + counts (docs, size)
+- POST /api/pilot/add-documents -> attach uploaded docs to pilot
+- GET /api/pilot/documents -> list docs in pilot with readiness + owner fields
+- POST /api/pilot/request-expansion -> creates a request record (lead capture)
+
+Note: If authentication/org does not exist yet, treat “pilot” as per-user local account, still using DB.
+
+--------------------------------------------------------------------
+3) PILOT GUARDRAILS (core value)
+--------------------------------------------------------------------
+
+Pilot Mode must enforce these rules:
+
+A) Mandatory readiness scan gate:
+- In PILOT mode, a document cannot be used for extraction/RAG until a readiness scan exists.
+- If user attempts extraction/chat and no scan exists:
+  return 409 { code:'SCAN_REQUIRED', message:'Run AI Readiness Scan before using this document in Pilot Mode.' }
+
+B) Stricter readiness gating:
+- Allow extraction only if:
+  - latestScan.status === 'READY'
+  OR user performs explicit override WITH reason (v1 reason required text input)
+- Overrides are recorded in DB:
+  pilot_overrides: id, pilotId, documentId, reason, createdAt
+
+C) No “org-wide” knowledge in v1:
+- Add scope parameter to extraction:
+  scope: 'PRIVATE' | 'PILOT_SHARED'
+- In PILOT mode, only allow 'PILOT_SHARED' within the pilot; do not implement ORG-wide.
+- If user tries 'ORG_SHARED' (if exists in code), block with:
+  403 { code:'PILOT_SCOPE_ONLY', message:'Pilot Mode limits usage to pilot scope only.' }
+
+D) Owner accountability prompt (lightweight):
+- Documents default to ownerDisplayName = 'Evident Intake (Unassigned)'
+- In PILOT mode, when a user clicks “Use in Pilot” or “Share in Pilot”:
+  - If owner is still Intake, show modal:
+    “Assign an Owner for accountability before using this in the pilot.”
+  - Allow selecting owner from owners list (at minimum include Intake + “Add custom owner name” v1).
+  - Save assignedOwner fields (do not fabricate sourceAuthor).
+
+E) Always-visible isolation copy:
+- On pilot screens show a banner:
+  “This pilot is isolated. Documents here are not used outside this pilot.”
+
+--------------------------------------------------------------------
+4) PILOT MODE SCREENS (frontend)
+--------------------------------------------------------------------
+
+Add routes:
+- /pilot (Pilot Home)
+- /pilot/documents (Pilot Documents list)
+- /pilot/settings (Pilot Guardrails + scope summary)
+
+Pilot Home (/pilot):
+Components:
+1) Header:
+   - Title: “AI Pilot Overview”
+   - Subtitle: “You are running a controlled AI pilot. Changes are limited to this scope.”
+2) Cards:
+   - “Pilot Scope” (docs count, size used, limits, last scan date)
+   - “AI Readiness Score” (avg score + trend placeholder)
+   - “Key Issues Detected” (top issue codes + counts)
+   - “Next Recommended Action” (button to scan all / prepare / assign owners)
+3) CTA:
+   - “Request AI Readiness Assessment (One-off)” button -> opens Assessment Request modal (lead capture)
+   - “Request expansion” button -> opens Expansion Request modal
+
+Pilot Documents (/pilot/documents):
+- Table list of pilot docs:
+  - name
+  - readinessScore
+  - status badge (READY/NEEDS_PREP/MANUAL/NOT_SCANNED)
+  - ownerDisplayName (or Intake)
+  - lastScannedAt
+- Filters:
+  - Status
+  - Owner: Intake vs Assigned
+- Bulk actions:
+  - “Run readiness scan” (queue scans)
+  - “Assign owner”
+  - “Make AI-Ready”
+- When user selects a doc and clicks “Use in Pilot”:
+  - enforce scan required
+  - enforce owner prompt if Intake
+  - enforce readiness gating (override modal with reason if not READY)
+
+Pilot Settings (/pilot/settings):
+- Read-only “Pilot Guardrails” list (with check icons):
+  - “Readiness scan required before use”
+  - “Pilot data is isolated to this scope”
+  - “Owner assignment recommended for accountability”
+- “Pilot Limits” summary (docs/size)
+- Buttons:
+  - “Request expansion”
+  - “Talk to us” (same as expansion request)
+
+UI requirements:
+- Use shadcn/ui Card, Badge, Alert, Dialog, Button, Table.
+- Use TanStack Query for all endpoints.
+- Display helpful errors with toasts/alerts and CTAs.
+
+--------------------------------------------------------------------
+5) LEAD CAPTURE (for org testing)
+--------------------------------------------------------------------
+
+Implement 2 request types (simple DB + API + UI):
+
+A) AI Readiness Assessment request:
+- reuse existing assessment_requests table if present
+- else create it:
+  assessment_requests: id, name, email, organisation, message, createdAt, status
+- allow attaching pilot context (pilotId, counts, avg score, top issues)
+
+B) Pilot Expansion request:
+pilot_expansion_requests:
+- id, pilotId, name, email, organisation, requestedDocsLimit, requestedSizeMB, message, createdAt, status
+
+UI:
+- “Request AI Readiness Assessment” modal
+- “Request expansion” modal
+
+Success copy:
+- “Request received. The Evident team will contact you.”
+
+--------------------------------------------------------------------
+6) BACKEND: EXTRACTION GATING CHANGES
+--------------------------------------------------------------------
+
+Update /api/extract (or existing extraction endpoint):
+Inputs include:
+- documentId
+- scope ('PRIVATE' | 'PILOT_SHARED')
+- appMode (or infer from user preference)
+
+Enforce:
+- If appMode === PILOT:
+  - must belong to active pilot
+  - must have readiness scan (else SCAN_REQUIRED)
+  - if status != READY:
+     require override reason OR block
+  - record overrides in pilot_overrides table
+
+Also ensure “Make AI-Ready” job is allowed in PILOT mode.
+
+--------------------------------------------------------------------
+7) TESTING / FIXTURES
+--------------------------------------------------------------------
+
+Add seed/mock data:
+- One active pilot
+- 10 pilot documents:
+  - mix of READY, NEEDS_PREP, MANUAL, NOT_SCANNED
+- This allows demo immediately without uploads.
+
+Unit tests (minimum):
+- scan required gating
+- pilot membership gating
+- override reason required
+- pilot limits enforcement
+
+--------------------------------------------------------------------
+DELIVERABLES
+--------------------------------------------------------------------
+- Mode switching + header badge + Settings toggle
+- DB migrations for pilot tables and requests
+- Backend endpoints for pilot init, pilot docs list, and requests
+- Pilot screens: /pilot, /pilot/documents, /pilot/settings
+- Gating logic enforced in extraction and “use in pilot” actions
+- Lead capture modals for assessment + expansion
+- Seed data for demo/testing
+
+Now implement Pilot Mode v1 end-to-end in the existing codebase so organisations can test Evident safely with a small scope.

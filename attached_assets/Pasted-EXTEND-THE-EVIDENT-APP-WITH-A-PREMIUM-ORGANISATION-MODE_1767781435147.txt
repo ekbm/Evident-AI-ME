@@ -1,0 +1,109 @@
+EXTEND THE EVIDENT APP WITH A “PREMIUM / ORGANISATION” MODE.
+
+GOAL
+Evident should support a Premium tier designed for small organisations that are gradually moving toward AI adoption by converting legacy/offline files into AI-ready knowledge.
+
+This is NOT full automation.
+This is a human-in-the-loop AI readiness layer.
+
+NEW PLAN
+Add a new plan:
+
+PREMIUM_ORG
+- Price: $79 / month (display only; no real billing yet)
+- Storage limit: 10 GB
+- Query limit: 1,000 per month
+- Media transcription: 300 minutes/month
+- Max files per workspace: unlimited (within storage cap)
+- Supports scheduled reports
+- Supports training-data export
+
+DATABASE CHANGES
+Add tables:
+
+workspaces:
+- id TEXT PRIMARY KEY
+- name TEXT
+- created_at TEXT
+
+workspace_assets:
+- workspace_id TEXT
+- asset_id TEXT
+
+reports:
+- id TEXT PRIMARY KEY
+- workspace_id TEXT
+- type TEXT            -- weekly_summary | monthly_gaps | obligations_report
+- schedule TEXT        -- weekly | monthly
+- last_run TEXT
+- next_run TEXT
+
+training_exports:
+- id TEXT PRIMARY KEY
+- workspace_id TEXT
+- format TEXT          -- json | csv | md
+- created_at TEXT
+
+FUNCTIONAL FEATURES
+
+1) MULTI-FILE RAG (Premium only)
+- Allow chat to accept multiple assetIds.
+- Retrieval should search across all assets in the workspace.
+- Evidence citations must include filename + source_ref.
+
+2) TRAINING DATA EXPORT
+Create endpoint:
+POST /api/premium/export-training-data
+
+Behavior:
+- Extract structured Q&A pairs from all workspace assets.
+- Output schema:
+  {
+    "qa_pairs": [
+      { "question": "...", "answer": "...", "sources": ["file:page"] }
+    ]
+  }
+- Allow export formats: JSON and CSV.
+- Store export metadata in training_exports table.
+
+3) SCHEDULED REPORTS (Premium only)
+Create background job:
+- Weekly summary:
+  - Top questions asked
+  - Most referenced files
+  - New obligations or rules detected
+- Monthly gaps report:
+  - Questions the AI could not answer
+  - Missing referenced documents
+  - Conflicting information detected
+
+Reports should:
+- Be generated automatically based on schedule.
+- Be viewable in UI.
+- Show timestamp + evidence references.
+
+4) AI-CONTEXT REQUESTS
+When AI detects missing context:
+- Return a structured message:
+  {
+    "missing_context": ["Document A", "Policy B"]
+  }
+- UI should prompt user to upload missing files.
+
+UI CHANGES
+- Add “Workspace” selector (single workspace for MVP).
+- Add “Reports” tab (Premium only).
+- Add “Export Training Data” button (Premium only).
+- Show plan badge: Individual / Pro / Plus / Premium Org.
+
+MESSAGING
+Use clear language:
+- “Premium helps organisations prepare their existing files for AI.”
+- “No automation required. Human review always included.”
+
+DELIVERABLE
+Implement Premium Org mode with:
+- Multi-file reasoning
+- Scheduled reports (mock scheduler is fine)
+- Training data export
+- Clear UI separation from individual plans

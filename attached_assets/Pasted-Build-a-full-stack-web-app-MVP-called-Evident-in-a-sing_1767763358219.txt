@@ -1,0 +1,233 @@
+Build a full-stack web app MVP called “Evident” in a single Replit workspace.
+
+GOAL
+Evident is an “any-file” evidence-based assistant.
+A user uploads ONE file (document, image, audio, video, or other), then:
+1) Can ask questions about it.
+2) App answers using RAG with citations (page/timestamp/segment/chunk references).
+3) App can perform one “tool action”: extract an obligations checklist as structured JSON (works best for contracts/policies, but should run for any file and return [] if none).
+
+IMPORTANT CONSTRAINTS (MVP)
+- Use OpenAI API (cloud AI). Do NOT use local LLMs.
+- Must work end-to-end inside Replit.
+- Store data locally in SQLite (no external DB dependency).
+- Keep datasets tiny. This is a demo: support one uploaded file at a time, but design DB so multiple assets can exist.
+- Use a small local “vector store” by saving embeddings as JSON arrays in SQLite and doing cosine similarity in Node (OK for small chunks).
+- Add conservative file limits for Replit stability:
+  - Max upload size: 25 MB
+  - For video/audio: recommend short clips (<= 2–3 minutes) for faster transcription
+- Provide seeded sample files for testing (at least: TXT contract, PNG image with text, short WAV/MP3 audio). If adding a video sample is too heavy, document how to test video with a small user clip.
+
+TECH STACK
+Backend:
+- Node.js + Express
+- multer for uploads
+- better-sqlite3 (or sqlite3) for SQLite
+- OpenAI official JS SDK
+- pdf-parse for PDF extraction
+- mammoth for DOCX extraction (optional but recommended)
+Frontend:
+- Simple server-rendered HTML (preferred for fastest stable MVP) with minimal JS fetch calls
+  OR React + Vite (only if you’re confident it’ll run smoothly in Replit)
+- UI must support: upload, ask, show citations, run “Extract obligations”.
+
+ENV VARS (Replit Secrets)
+- OPENAI_API_KEY (required)
+- Optional: OPENAI_CHAT_MODEL default "gpt-4.1-mini"
+- Optional: OPENAI_EMBED_MODEL default "text-embedding-3-small"
+- Optional: OPENAI_TRANSCRIBE_MODEL default "gpt-4o-mini-transcribe"
+
+DATA MODEL (SQLite)
+Create tables:
+
+assets:
+- id TEXT PRIMARY KEY
+- filename TEXT
+- mime TEXT
+- size_bytes INTEGER
+- status TEXT           -- UPLOADED | PROCESSING | READY | ERROR | UNSUPPORTED
+- created_at TEXT
+
+artifacts:
+- id TEXT PRIMARY KEY
+- asset_id TEXT
+- kind TEXT             -- extracted_text | ocr_text | image_caption | transcript | fallback_note
+- metadata_json TEXT    -- store page/timestamp/segment info etc
+- created_at TEXT
+
+chunks:
+- id TEXT PRIMARY KEY
+- asset_id TEXT
+- artifact_id TEXT
+- source_ref TEXT       -- e.g. "page=3" or "t=00:01:10-00:01:25" or "image=1" or "chunk=5"
+- text TEXT
+- embedding_json TEXT   -- JSON array string
+- created_at TEXT
+
+REQUIRED BEHAVIOR: “ANY FILE” INGESTION
+Your app must ACCEPT any file upload.
+It should TRY to produce “evidence text” depending on type:
+
+A) Documents
+- Supported: PDF, TXT, DOCX (optional: PPTX later)
+- PDF: extract text via pdf-parse; citations should attempt page-based if feasible; if not feasible, cite "chunk=N".
+- TXT: use file text directly; citations can be chunk-based or line ranges.
+- DOCX: extract text via mammoth; citations chunk-based.
+
+B) Images (PNG/JPG/JPEG/WebP)
+- Create evidence text using OpenAI vision-capable Responses call:
+  - Extract any visible text (OCR-style) + brief description.
+- Save as artifact(s): "ocr_text" and/or "image_caption".
+- Citations: "image=1" plus chunk index (e.g., "image=1:chunk=2").
+
+C) Audio (MP3/WAV/M4A) and Video (MP4/MOV)
+- Produce transcript text using OpenAI transcription endpoint (Audio API).
+- Chunk transcript by time windows if timestamps are available; otherwise chunk sequentially and cite "t=unknown:chunk=N".
+- Citations: timestamps if you can. If not, cite chunk ids (e.g., "transcript:chunk=4").
+NOTE: For MVP, you may implement transcript without timestamps if the SDK response only returns plain text. If timestamps are available, store them.
+
+D) Unknown/Other file types (e.g., CSV, JSON, ZIP)
+- If it’s plain-text readable (CSV/JSON), treat as text and chunk.
+- If truly unsupported (e.g., binary), set status UNSUPPORTED and store a fallback_note artifact that explains: “Unsupported type; please upload PDF/TXT/DOCX/PNG/JPG/MP3/MP4”.
+
+CHUNKING + EMBEDDINGS
+- Chunk size ~1200 chars, overlap ~150.
+- Create chunks with a meaningful source_ref:
+  - Documents: "page=N" when possible; else "doc:chunk=N"
+  - Images: "image=1" (or "image=1:chunk=N")
+  - Audio/video: "t=START-END" if available; else "transcript:chunk=N"
+- Embeddings:
+  - Use OpenAI embeddings API with model default "text-embedding-3-small".
+  - Store embeddings as JSON array strings in embedding_json.
+
+RAG FLOW
+1) For a given asset:
+- Embed user question
+- Load all chunk embeddings for that asset (small dataset)
+- Compute cosine similarity in Node
+- Pick topK chunks (default 5)
+2) Build evidence block:
+- For each retrieved chunk: include [n], source_ref, and chunk text.
+3) Ask OpenAI Responses API:
+- Must answer using ONLY evidence
+- Must cite [1], [2], etc.
+- If insufficient, say “Not found in the provided file.”
+
+MCP-STYLE TOOL ACTION (ONE “DO” FEATURE)
+Create endpoint: POST /api/actions/extract-obligations
+Input: { assetId }
+Behavior:
+- Retrieve evidence set (top chunks or all chunks if small)
+- Call OpenAI Responses API with strict JSON output requirement:
+  Return JSON schema:
+  {
+    "obligations": [
+      {
+        "who": "string",
+        "must_do": "string",
+        "when": "string|null",
+        "source": "[n]"
+      }
+    ]
+  }
+- Must include citations via source field referencing evidence chunk numbers (e.g. "[2]").
+- If none, return {"obligations": []}.
+
+API ENDPOINTS
+1) POST /api/upload
+- Accept any file.
+- Enforce max file size (25MB).
+- Save asset row with status PROCESSING then READY/UNSUPPORTED/ERROR.
+- Ingest according to mime/type detection.
+- Return: { assetId, filename, mime, status, message }
+
+2) POST /api/chat
+Input: { assetId, question, topK }
+- Do RAG retrieval and Responses call.
+Return: {
+  answer: string,
+  citations: [{ n, source_ref, score }],
+  evidencePreview: [{ n, source_ref, snippet }]
+}
+
+3) POST /api/actions/extract-obligations
+Return: { obligations: [...] }
+
+FRONTEND UI (SINGLE PAGE)
+- Upload section:
+  - file picker + upload button
+  - show current assetId, filename, status
+- Ask section:
+  - input + Ask button
+  - show answer
+  - show citations list (source_ref + score)
+- Action section:
+  - button “Extract obligations checklist”
+  - render obligations as checklist items with citation source [n]
+
+OPENAI API USAGE DETAILS
+- Use OpenAI official Node SDK.
+- Use embeddings endpoint for vectors.
+- Use Responses API for chat + for image-to-text/captioning:
+  - For images: pass image input to Responses API to produce OCR-style text + caption.
+- Use audio transcription endpoint for audio/video.
+- Keep prompts short and deterministic. Temperature low (0–0.2).
+- Never put OPENAI_API_KEY in client code; backend only.
+
+TESTING (MINIMAL BUT REAL)
+Add automated tests with Jest or Vitest + Supertest:
+1) Upload sample TXT -> status READY, returns assetId
+2) Chat question -> returns answer + citations array
+3) Extract obligations -> returns obligations array (>= 3 for sample contract)
+4) Upload sample PNG (with text) -> status READY, then ask “What text is in the image?” -> returns something non-empty with citations
+5) Upload sample WAV/MP3 -> status READY, ask “What is said?” -> returns something non-empty with citations
+
+SAMPLE FILES (IN REPO)
+Create folder /sample with:
+- contract_sample.txt (15–30 lines including payment terms, deadlines, termination, obligations)
+- image_sample.png (simple image with a few words, e.g., “Payment due in 14 days”)
+- audio_sample.wav or .mp3 (very short clip; if you can’t include, generate instructions in README for user to upload any short clip)
+Optional:
+- video_sample.mp4 (keep tiny; if not included, document how to test with user clip)
+
+FILES TO CREATE (SUGGESTED)
+server/
+- index.js            (Express app + static frontend)
+- db.js               (SQLite init + helpers)
+- ingest/
+  - ingest.js         (dispatch by file type)
+  - ingest_pdf.js
+  - ingest_txt.js
+  - ingest_docx.js
+  - ingest_image.js   (Responses vision to OCR+caption)
+  - ingest_media.js   (Audio transcription)
+- rag.js              (cosine similarity + retrieve)
+- openai.js           (OpenAI client + helper calls)
+- routes.js           (API routes)
+- tests/              (supertest tests)
+web/
+- index.html          (simple UI)
+- app.js              (fetch calls)
+
+RUN COMMANDS
+Provide package.json scripts:
+- "dev": node server/index.js (and if needed nodemon)
+- "test": run tests
+
+DELIVERABLE
+- Build the full project and ensure it runs in Replit.
+- Print clear instructions:
+  1) set OPENAI_API_KEY in Replit secrets
+  2) npm install
+  3) npm run dev
+  4) upload sample files and test chat + obligations
+  5) npm run test
+
+QUALITY REQUIREMENTS
+- Good error handling:
+  - too large file -> 413 with friendly message
+  - missing assetId -> 404
+  - OpenAI failure -> 502 with message
+  - unsupported file -> status UNSUPPORTED + guidance
+- Keep code readable with comments.
+- Keep everything MVP-focused, reliable, and testable.

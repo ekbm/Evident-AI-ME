@@ -1,0 +1,101 @@
+You are working on Evident (React/TypeScript web app). Implement “Vertical Landing Pages” and an in-app “Mode” system so users can enter the same core workspace (Upload → Ask → Get answers) but with different default tools, shortcuts, and copy depending on the selected category.
+
+GOALS
+1) Create separate landing pages (routes) for:
+   - /students
+   - /educators
+   - /finance
+   - /legal
+   - /hr
+   Each page should have a tailored hero section and CTA that routes into the main app/workspace while preserving a selected “mode”.
+
+2) Implement a Mode system in the main app:
+   - Modes: "general" | "students" | "educators" | "finance" | "legal" | "hr"
+   - The UI stays the same, but:
+     a) default selected tab/tool changes
+     b) suggested “quick action” buttons change
+     c) optional banners/tooltips change
+     d) irrelevant student promo banners should not show in non-student modes
+
+3) Mode selection should persist:
+   - If user arrives from landing page, set mode from URL param or route
+   - Save to localStorage so future visits keep the last mode
+   - If user is logged in and you already store user preferences, also store mode in the user profile (optional, only if easy)
+
+4) Add optional URL parameter support:
+   - Support ?mode=students etc on any route.
+   - Priority order for determining mode:
+     (1) explicit ?mode=
+     (2) landing route (/students sets students, etc)
+     (3) localStorage
+     (4) default "general"
+
+5) Inside the main workspace, implement:
+   - a “Mode Switcher” dropdown in the top bar (simple)
+   - When changed, it updates localStorage and updates UI immediately.
+
+UI REQUIREMENTS (Minimal changes, maximum impact)
+A) Add a “Quick Actions” row in the workspace (or reuse existing button rail) whose items are driven by mode.
+
+Suggested Quick Actions per mode:
+
+STUDENTS:
+- "Generate Practice Exam"
+- "Flashcards"
+- "Practice Questions"
+- "Explain Simply"
+- "Deep Summary"
+
+EDUCATORS:
+- "Generate Quiz"
+- "Create Variations"
+- "Print Exam"
+- "QR Grade Workflow"
+- "Rubric / Marking Guide"
+
+FINANCE:
+- "Revenue Trend"
+- "Compare Margins"
+- "Financial Health"
+- "Valuation Comparison"
+- "Build Thesis"
+- "Undervalued Screen"
+
+LEGAL:
+- "Clause Summary"
+- "Risks & Obligations"
+- "Compare Documents"
+- "Extract Definitions"
+- "Generate Checklist"
+
+HR:
+- "Screen CVs"
+- "Compare to Job Description"
+- "Policy Q&A"
+- "Interview Questions"
+- "Performance Review Draft"
+
+GENERAL:
+- "Summarize"
+- "Explain"
+- "Key Points"
+- "Compare"
+- "Export"
+
+B) Default behavior changes per mode:
+- Students: default tool = Study/Exam Prep if available
+- Educators: default tool = Quiz/Assignments if available
+- Finance: default tool = Finance Query page/tab if it exists, otherwise show Finance quick actions prominently
+- Legal/HR: default tool = general Ask, but quick actions reflect legal/hr
+
+C) Landing pages CTA:
+- CTA button “Try it now” routes to /app (or your workspace route) with ?mode=<mode>.
+- Example: /students -> /app?mode=students
+
+ENGINEERING DETAILS
+1) Create a ModeContext (React Context) + hook:
+   - getMode(): reads from URL param, route, localStorage
+   - setMode(mode): updates state + localStorage (+ user profile if implemented)
+2) Create a modeConfig object:
+   - label, description, defaultTool, quickActions array, optional banners
+3) Refactor quick-action UI to render from modeConfig[mode].quic

@@ -1,0 +1,256 @@
+REPLIT BUILD PROMPT — EVIDENT “HIRING PACK” (CV SHORTLISTING WORKFLOW)
+
+GOAL
+Add a new Evident module called “Hiring Pack” that helps HR shortlist 800–1000 CVs against fixed criteria, producing:
+- Ranked candidates list (Shortlist / Borderline / Not a match)
+- Evidence-backed explanations (highlight exact CV lines used)
+- Filters + export to CSV
+This is decision-support (not automated hiring). Make this explicit in UI.
+
+TECH STACK (same as existing app)
+Frontend: React + TS + Vite + Tailwind + shadcn/ui + TanStack Query + Wouter
+Backend: Node.js + Express + TS + PostgreSQL + Drizzle ORM
+Storage: existing upload storage (S3 or local)
+Auth: existing Firebase/email login flow
+LLM: use existing provider wrapper (OpenAI or current)
+
+HIGH-LEVEL FLOW
+1) HR creates a “Hiring Pack” for a role (rubric builder)
+2) HR uploads a batch of CVs (PDF/DOCX)
+3) System parses + extracts structured candidate fields
+4) System evaluates rubric (must-have gates + weighted scoring)
+5) UI shows ranked list + evidence for every criterion
+6) HR exports shortlisted results (CSV)
+7) Optional: generate interview questions per candidate (v1.1)
+
+DATA MODEL (DB TABLES)
+Add tables:
+
+1) hiring_packs
+- id (uuid)
+- owner_user_id
+- title (e.g., “Service Desk Analyst — Feb Intake”)
+- description
+- jd_text (optional)
+- created_at, updated_at
+
+2) hiring_criteria
+- id (uuid)
+- pack_id (fk hiring_packs)
+- type ENUM('MUST_HAVE','NICE_TO_HAVE','RED_FLAG')
+- field_key (string: e.g. "work_rights", "years_experience", "skill_zendesk")
+- operator ENUM('EQ','INCLUDES','GTE','LTE','REGEX','EXISTS')
+- target_value (jsonb)
+- weight (int, default 0; only for NICE_TO_HAVE/RED_FLAG scoring)
+- display_label (string)
+- enabled (boolean)
+
+3) candidate_profiles
+- id (uuid)
+- pack_id (fk)
+- source_file_id (fk uploads table if exists)
+- full_name (string nullable)
+- email (string nullable)
+- phone (string nullable)
+- location (string nullable)
+- current_title (string nullable)
+- total_years_experience (float nullable)
+- work_rights (string nullable)  // keep simple: “Citizen/PR”, “Visa”, “Unknown”
+- education_summary (text nullable)
+- skills (jsonb array)
+- certifications (jsonb array)
+- employment_history (jsonb array)
+- raw_text (text) // extracted CV text
+- created_at, updated_at
+
+4) candidate_evaluations
+- id (uuid)
+- pack_id (fk)
+- candidate_id (fk)
+- overall_status ENUM('SHORTLIST','BORDERLINE','NOT_A_MATCH')
+- overall_score (int)
+- must_have_pass (boolean)
+- explanation (text) // short summary
+- created_at, updated_at
+
+5) evaluation_evidence
+- id (uuid)
+- evaluation_id (fk)
+- criterion_id (fk)
+- passed (boolean)
+- score_delta (int)
+- reasoning (text)
+- evidence_snippets (jsonb array of {quote, start_idx, end_idx})
+NOTE: evidence snippets must be extracted from candidate_profiles.raw_text (exact text),
+never hallucinated.
+
+API ENDPOINTS (Express)
+Create routes:
+
+POST /api/hiring/packs
+- create pack
+
+GET /api/hiring/packs
+- list packs
+
+GET /api/hiring/packs/:id
+- get pack details + criteria
+
+POST /api/hiring/packs/:id/criteria
+- add/update criteria (bulk save supported)
+
+POST /api/hiring/packs/:id/upload-cvs
+- accepts multiple files
+- stores uploads
+- creates candidate_profiles with extracted raw_text
+- triggers evaluation job (async)
+
+GET /api/hiring/packs/:id/candidates
+- returns paginated list
+- supports filters: status, minScore, location, skill, work_rights
+
+GET /api/hiring/packs/:id/candidates/:candidateId
+- returns candidate profile + evaluation + evidence
+
+POST /api/hiring/packs/:id/run-evaluation
+- rerun evaluation for all candidates (when rubric changes)
+
+GET /api/hiring/packs/:id/export
+- returns CSV of candidate evaluations + key fields
+
+PIPELINE IMPLEMENTATION DETAILS
+A) TEXT EXTRACTION
+- For PDF: use pdf-parse (Node) or existing extraction utility
+- For DOCX: use mammoth
+- Store extracted text in candidate_profiles.raw_text
+
+B) STRUCTURED EXTRACTION (LLM)
+Create function extractCandidateProfile(rawText) => normalized JSON:
+{
+ full_name, location, current_title,
+ total_years_experience,
+ work_rights, // only if explicitly stated, else “Unknown”
+ skills: [],
+ certifications: [],
+ education_summary,
+ employment_history:[{company,title,start,end,notes}]
+}
+IMPORTANT:
+- If a field is not present, set null/Unknown
+- Don’t infer sensitive attributes (age, gender, ethnicity)
+- Ignore photos; ignore DOB
+
+C) RUBRIC EVALUATION (HYBRID)
+Do NOT rely purely on LLM scoring.
+Use deterministic checks wherever possible:
+- years_experience: parse numeric value and compare GTE/LTE
+- skills includes: check normalized skills list + raw_text fallback keyword match
+- certifications includes: check list + raw_text fallback
+- work_rights: only pass MUST_HAVE if explicit match; otherwise fail/unknown based on criterion rule
+
+For fields that are ambiguous (e.g. “domain experience”), allow LLM to produce
+a “supporting evidence snippet” but it must quote raw_text.
+
+Algorithm:
+1) Evaluate all MUST_HAVE criteria:
+   - If any required criterion fails => must_have_pass=false, status NOT_A_MATCH
+2) If pass, compute weighted score:
+   - NICE_TO_HAVE adds weight if passed
+   - RED_FLAG subtracts weight if triggered
+3) Determine status:
+   - score >= shortlist_threshold => SHORTLIST
+   - score between borderline range => BORDERLINE
+   - else NOT_A_MATCH
+Thresholds stored per pack or constants (v1 constants):
+   shortlist_threshold = 70
+   borderline_threshold = 50
+
+D) EVIDENCE SNIPPETS
+When a criterion passes/fails, store snippets:
+- Find supporting sentences in raw_text using simple heuristics:
+   - keyword search around matched term
+   - or LLM returns quoted spans that must exist verbatim in raw_text
+Validate snippet exists in raw_text before saving.
+
+ASYNC JOBS (IMPORTANT)
+Batch processing 800–1000 files must be async.
+Implement a lightweight job queue in Postgres:
+- jobs table with status: queued/running/done/failed
+- worker loop on server (or background process)
+Each upload triggers:
+- extract text
+- extract profile
+- evaluate rubric
+- save evaluation + evidence
+
+UI / UX (React)
+Add navigation item: “Hiring Pack”
+Screens:
+
+1) HiringPackList
+- create new pack button
+- list packs (title + created date + candidate count)
+
+2) HiringPackBuilder
+- Pack name, role description, optional JD input
+- Criteria builder with sections:
+   MUST HAVE (toggle + operator + target)
+   NICE TO HAVE (weight slider)
+   RED FLAGS (negative weight)
+- Save rubric
+- Button: “Run Evaluation” (disabled if no candidates)
+
+3) HiringPackUpload
+- drag/drop multi upload (PDF/DOCX)
+- shows progress (queued/processing/done)
+- shows “processed X of Y”
+
+4) HiringPackResults
+- table: Name | Score | Status | Location | Years | Work Rights | Top Skills
+- filters: status chips, min score slider, location dropdown, skill search
+- click row => CandidateDetail
+
+5) CandidateDetail
+- left: extracted profile summary
+- right: criteria checklist with pass/fail
+- expandable “Evidence” showing highlighted snippets from raw_text
+- “Generate Interview Questions” button (v1.1; hide behind feature flag)
+
+EXPORT
+- CSV includes: name, email, phone, location, score, status, must_have_pass, key skills, reasoning summary
+- Provide download button
+
+GUARDRAILS & DISCLAIMER (MUST)
+Add banner text:
+“This tool helps you screen CVs using your criteria and provides evidence from documents. It does not make hiring decisions.”
+Add settings to exclude:
+- age / DOB
+- gender
+- ethnicity
+- photo
+Do not extract these; do not display them.
+
+TESTS
+- unit tests for rubric evaluation (deterministic checks)
+- ensure evidence snippets exist in raw_text
+- load test with 100+ docs (simulate)
+
+DELIVERABLES
+- new routes + db schema + migrations
+- UI screens + routing
+- job queue + worker
+- CSV export
+- basic analytics: processing time per doc, queue depth
+
+IMPLEMENTATION ORDER
+1) DB schema + migrations
+2) Pack builder UI + criteria save
+3) Upload endpoint + text extraction
+4) Candidate profile extraction (LLM) + save
+5) Evaluation engine + evidence validation
+6) Results UI + Candidate detail evidence highlights
+7) Export CSV
+8) Queue worker improvements + retry
+
+DONE WHEN
+- Can create a pack, define criteria, upload 50+ CVs, see ranked list, open candidate detail, view evidence, export shortlist CSV.

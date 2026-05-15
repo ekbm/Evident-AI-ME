@@ -1,0 +1,20 @@
+# Evident AI — production robots policy
+# Note: Replit preview/dev domains (*.replit.dev) override this with X-Robots-Tag: noindex.
+# This file applies to the published evident-ai.net domain.
+
+User-agent: *
+Allow: /
+
+# Block private/authenticated areas from indexing
+Disallow: /full
+Disallow: /auth
+Disallow: /reset-password
+Disallow: /settings
+Disallow: /admin
+Disallow: /admin/
+Disallow: /pilot
+Disallow: /pilot/
+Disallow: /api/
+Disallow: /onboarding
+
+Sitemap: https://evident-ai.net/sitemap.xml

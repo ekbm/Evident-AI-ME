@@ -1,0 +1,102 @@
+You are building an iOS + web backend for an app called Evident. Add an “Early Access Free Tier Limits” system.
+
+TECH CONTEXT
+- Frontend: React + TypeScript (or SwiftUI later)
+- Backend: Node.js + Express + TypeScript
+- Database: PostgreSQL with Drizzle ORM
+- Auth: Firebase email login
+- App currently supports: document upload, parsing, Q&A with citations, answer history
+- Add server-enforced limits (do NOT rely on client-only checks)
+
+LIMITS (FREE EARLY ACCESS)
+Per user (lifetime until reset):
+1) MaxDocumentsTotal: 5
+2) MaxFileSizeMB: 15
+3) MaxPagesPerDocument: 50
+4) MaxQuestionsTotal: 30
+
+Rate limiting:
+5) MaxQuestionsPerHour: 5 (rolling window)
+
+Cost-control:
+6) Disallow re-processing the same file hash for free users (if same hash already processed, reuse existing extraction result)
+7) Add a global “AI Kill Switch” environment flag that pauses AI processing system-wide when enabled.
+
+REQUIREMENTS
+A) Data model
+- Add a `user_usage` table keyed by userId:
+  - documents_count
+  - questions_total
+  - questions_hour_window_count
+  - questions_hour_window_start (timestamp)
+  - last_reset_at (optional)
+- Add a `documents` table with:
+  - id, userId
+  - filename, sizeBytes, pageCount
+  - sha256 hash
+  - processedAt
+  - extractionCacheKey (or extractedTextId)
+- Ensure unique constraint on (userId, sha256) OR store global hash table and link to extraction to avoid duplicate processing
+
+B) Middleware
+- Create `requireUsageLimits` middleware:
+  - For uploads: enforce file size, pages, max docs, and duplicate hash behavior
+  - For Q&A endpoint: enforce total question cap and hourly rolling cap
+- Return consistent error codes + messages:
+  - code: LIMIT_DOCS_REACHED
+  - code: LIMIT_FILE_TOO_LARGE
+  - code: LIMIT_PAGES_TOO_MANY
+  - code: LIMIT_QUESTIONS_TOTAL_REACHED
+  - code: LIMIT_QUESTIONS_RATE_REACHED
+  - code: AI_PAUSED
+- Include `meta` fields in errors to show current usage and limits:
+  - meta.currentDocs, meta.maxDocs, meta.currentQuestions, meta.maxQuestions, meta.retryAfterSeconds, etc.
+
+C) API Endpoints
+1) GET /api/usage
+- returns limits + current usage + next reset time for hourly window
+
+2) POST /api/documents/upload
+- checks limits
+- calculates file sha256
+- if duplicate hash found for this user and already processed, do NOT reprocess; attach existing extraction result
+- stores document record and increments documents_count (only if it’s a new doc record)
+
+3) POST /api/qa/ask
+- if AI kill switch enabled, return AI_PAUSED
+- checks rate limit window + total
+- increments counters
+- stores QA history with citations
+
+D) Frontend
+- Add a “Plan & Limits” page or modal:
+  - Show Free Early Access plan details
+  - Show usage bars (docs used, questions used, questions/hour used)
+  - Use the copy provided below (friendly, non-restrictive)
+- Handle errors from server by showing correct UX dialogs with the exact messages:
+  - Docs reached modal
+  - Questions total reached modal
+  - Rate limit modal with countdown
+  - AI paused banner
+
+COPY (must match)
+- Free plan text:
+  "Free (Early Access) — Build with us while we polish Evident."
+  Bullets: 5 documents, 50 pages/doc, 15MB/file, 30 questions total, 5 questions/hour
+
+E) Testing
+- Add unit tests for middleware enforcing each limit.
+- Add integration tests for:
+  - upload too large
+  - upload too many pages
+  - upload beyond 5 docs
+  - duplicate hash reuse
+  - qa beyond 30
+  - qa more than 5/hour
+  - ai paused flag
+
+DELIVERABLE
+- Provide the database schema changes (Drizzle)
+- Middleware + routes code
+- Minimal frontend UI components
+- Ensure everything compiles and endpoints are wired into Express.

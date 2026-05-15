@@ -1,0 +1,595 @@
+ate/Time:        2026-01-19 15:03:07.589 +0800
+End time:         2026-01-19 15:04:39.015 +0800
+OS Version:       macOS 15.7.3 (Build 24G419)
+Architecture:     arm64e
+Report Version:   60
+Incident Identifier: D30B423A-0133-484B-B685-9C3960FD8290
+
+Data Source:      Microstackshots
+Shared Cache:     87B95872-5E6E-3168-A703-5F00925E0AB2 slid base address 0x189998000, slide 0x9998000
+
+Command:          com.apple.WebKit.WebContent
+Path:             /Volumes/VOLUME/*/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent
+Identifier:       com.apple.WebKit.WebContent
+Version:          20622 (20622.2.11.119.1)
+Build Version:    3
+Product Build Version: 622B30
+Project Name:     WebKit
+Source Version:   7622002011119001
+Resource Coalition: "com.apple.Safari"(1004)
+Architecture:     arm64e
+Parent:           UNKNOWN [1]
+PID:              32282
+
+Event:            cpu usage
+Action taken:     none
+CPU:              90 seconds cpu time over 91 seconds (98% cpu average), exceeding limit of 50% cpu over 180 seconds
+CPU limit:        90s
+Limit duration:   180s
+CPU used:         90s
+CPU duration:     91s
+Duration:         91.43s
+Duration Sampled: 87.12s (event starts 0.84s before samples, event ends 3.47s after samples)
+Steps:            26
+
+Hardware model:   Mac14,2
+Active cpus:      8
+Memory size:      16 GB
+HW page size:     16384
+VM page size:     16384
+Shared cache residency: 11.78% (552.25 MB / 4687.41 MB)
+
+Time Since Boot:  456741s
+Time Awake Since Boot: 97278s
+Time Since Wake:  232s
+
+Total CPU Time:   140.076s
+Advisory levels:  Battery -> 2, User -> 2, ThermalPressure -> 0, Combined -> 2
+Free disk space:  73.07 GB/228.27 GB, low space threshold 3072 MB
+Low Power Mode:   Enabled
+Vnodes Available: 60.97% (153326/251471)
+Model:            com.apple.fm.code.generate_safety_guardrail.tokenizer
+  Loaded:         ??? - N/A, requested by UNKNOWN
+Model:            com.apple.fm.code.generate_safety_guardrail.base
+  Loaded:         ??? - 4.0s, requested by UNKNOWN
+
+Preferred User Language: en-AU
+Country Code:     AU
+Keyboards:        Australian
+OS Cryptex File Extents: 257
+
+Heaviest stack for the target process:
+  15  start + 6076 (dyld + 27544) [0x189a6ab98]
+  15  WebKit::XPCServiceMain(int, char const**) + 44 (WebKit + 4356632) [0x107c8ba18]
+  15  xpc_main + 64 (libxpc.dylib + 99688) [0x189b1c568]
+  15  _xpc_main + 40 (libxpc.dylib + 167880) [0x189b2cfc8]
+  15  _xpc_objc_main + 700 (libxpc.dylib + 100808) [0x189b1c9c8]
+  15  -[NSRunLoop(NSRunLoop) run] + 64 (Foundation + 858012) [0x18b53c79c]
+  15  -[NSRunLoop(NSRunLoop) runMode:beforeDate:] + 212 (Foundation + 367736) [0x18b4c4c78]
+  15  CFRunLoopRunSpecific + 572 (CoreFoundation + 502248) [0x189ef49e8]
+  14  __CFRunLoopRun + 1848 (CoreFoundation + 505768) [0x189ef57a8]
+  14  __CFRunLoopDoTimers + 332 (CoreFoundation + 611228) [0x189f0f39c]
+  14  __CFRunLoopDoTimer + 980 (CoreFoundation + 612448) [0x189f0f860]
+  14  __CFRUNLOOP_IS_CALLING_OUT_TO_A_TIMER_CALLBACK_FUNCTION__ + 32 (CoreFoundation + 613280) [0x189f0fba0]
+  14  WebCore::timerFired(__CFRunLoopTimer*, void*) + 68 (WebCore + 47544) [0x11a9339b8]
+  14  WTF::Detail::CallableWrapper<WebCore::ThreadTimers::setSharedTimer(WebCore::SharedTimer*)::$_0, void>::call() + 264 (WebCore + 40351996) [0x11cfa38fc]
+  14  WTF::Detail::CallableWrapper<WebCore::Timer::Timer<WebCore::WindowEventLoop, WebCore::WindowEventLoop>(WebCore::WindowEventLoop&, void (WebCore::WindowEventLoop::*)())::'lambda'(), void>::call() + 100 (WebCore + 31348612) [0x11c70d784]
+  14  WebCore::WindowEventLoop::didReachTimeToRun() + 72 (WebCore + 31344060) [0x11c70c5bc]
+  14  WebCore::EventLoop::run(std::__1::optional<WTF::ApproximateTime>) + 308 (WebCore + 30571556) [0x11c64fc24]
+  14  WTF::Detail::CallableWrapper<void WebCore::ActiveDOMObject::queueTaskKeepingObjectAlive<WebCore::WebSocket, WebCore::WebSocket::didReceiveBinaryData(WTF::Vector<unsigned char, 0ul, WTF::CrashOnOverflow, 16ul, WTF::FastMalloc>&&)::$_0>(WebCore::WebSocket&, WebCore::TaskSource, WebCore::WebSocket::didReceiveBinaryData(WTF::Vector<unsigned char, 0ul, WTF::CrashOnOverflow, 16ul, WTF::FastMalloc>&&)::$_0&&)::'lambda'(), void>::call() + 276 (WebCore + 24066932) [0x11c01bb74]
+  14  WebCore::EventTarget::dispatchEvent(WebCore::Event&) + 292 (WebCore + 30593332) [0x11c655134]
+  14  WebCore::EventTarget::fireEventListeners(WebCore::Event&, WebCore::EventTarget::EventInvokePhase) + 424 (WebCore + 30543672) [0x11c648f38]
+  14  WebCore::EventTarget::innerInvokeEventListeners(WebCore::Event&, WTF::Vector<WTF::RefPtr<WebCore::RegisteredEventListener, WTF::RawPtrTraits<WebCore::RegisteredEventListener>, WTF::DefaultRefDerefTraits<WebCore::RegisteredEventListener>>, 1ul, WTF::CrashOnOverflow, 2ul, WTF::FastMalloc>, WebCore::EventTarget::EventInvokePhase) + 472 (WebCore + 30594548) [0x11c6555f4]
+  14  WebCore::JSEventListener::handleEvent(WebCore::ScriptExecutionContext&, WebCore::Event&) + 1068 (WebCore + 25820488) [0x11c1c7d48]
+  14  WebCore::JSExecState::~JSExecState() + 140 (WebCore + 25786480) [0x11c1bf870]
+  14  WebCore::EventLoopTaskGroup::performMicrotaskCheckpoint() + 88 (WebCore + 30580096) [0x11c651d80]
+  14  WebCore::MicrotaskQueue::performMicrotaskCheckpoint() + 348 (WebCore + 30777548) [0x11c6820cc]
+  14  WebCore::MicrotaskQueue::runJSMicrotask(JSC::JSGlobalObject*, JSC::VM&, JSC::QueuedTask&) + 276 (WebCore + 30776688) [0x11c681d70]
+  14  JSC::profiledCall(JSC::JSGlobalObject*, JSC::ProfilingReason, JSC::JSValue, JSC::CallData const&, JSC::JSValue, JSC::ArgList const&, WTF::NakedPtr<JSC::Exception>&) + 112 (JavaScriptCore + 16732212) [0x10f8c5034]
+  14  JSC::Interpreter::executeCall(JSC::JSObject*, JSC::CallData const&, JSC::JSValue, JSC::ArgList const&) + 3168 (JavaScriptCore + 14651840) [0x10f6c91c0]
+  14  ??? [0x1237b4548]
+  9   ??? [0x124804658]
+  5   ??? [0x123f277ec]
+  5   ??? [0x124b3e028]
+  5   ??? [0x124ae8188]
+  5   ??? [0x124828ee8]
+  5   ??? [0x1239fd6c4]
+  5   ??? [0x123d5a5a4]
+  5   ??? [0x1248a5654]
+  5   ??? [0x1239fd6c4]
+  5   ??? [0x123d5a5a4]
+  5   ??? [0x1248a5654]
+  5   ??? [0x12453c474]
+  5   ??? [0x123d4dc78]
+  4   ??? [0x123a50ab4]
+  4   ??? [0x12451720c]
+  3   ??? [0x12485a670]
+  1   ??? [0x123eb46e4]
+  1   ??? [0x123eb46b4]
+  1   JSC::arrayProtoFuncSort(JSC::JSGlobalObject*, JSC::CallFrame*) + 14900 (JavaScriptCore + 16541084) [0x10f89659c]
+  1   vmEntryToJavaScriptGateAfter + 24 (JavaScriptCore + 25997036) [0x11019aeec]
+
+
+Powerstats for:   com.apple.WebKit.WebContent [32282]
+UUID:             E182F4E3-356F-3BBB-98E1-BA1F344B1A12
+Path:             /Volumes/VOLUME/*/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent
+Identifier:       com.apple.WebKit.WebContent
+Version:          20622 (20622.2.11.119.1)
+Build Version:    3
+Product Build Version: 622B30
+Project Name:     WebKit
+Source Version:   7622002011119001
+Resource Coalition: 16 samples "com.apple.Safari"(1004)
+Architecture:     arm64e
+Parent:           UNKNOWN [1]
+UID:              501
+Sudden Term:      Tracked (allows idle exit)
+Footprint:        1580.94 MB -> 1454.31 MB (-126.62 MB) (max 3240.30 MB )
+Pageins:          453 pages
+Start time:       2026-01-19 15:03:08.429 +0800
+End time:         2026-01-19 15:04:35.549 +0800
+Num samples:      16 (62%)
+Num threads:      2
+Primary state:    15 samples Frontmost App, Non-Suppressed, User mode, Effective Thread QoS User Interactive, Requested Thread QoS User Interactive, Override Thread QoS Unspecified, p-core
+User Activity:    0 samples Idle, 16 samples Active
+Power Source:     16 samples on Battery, 0 samples on AC
+  15  start + 6076 (dyld + 27544) [0x189a6ab98]
+    15  WebKit::XPCServiceMain(int, char const**) + 44 (WebKit + 4356632) [0x107c8ba18]
+      15  xpc_main + 64 (libxpc.dylib + 99688) [0x189b1c568]
+        15  _xpc_main + 40 (libxpc.dylib + 167880) [0x189b2cfc8]
+          15  _xpc_objc_main + 700 (libxpc.dylib + 100808) [0x189b1c9c8]
+            15  -[NSRunLoop(NSRunLoop) run] + 64 (Foundation + 858012) [0x18b53c79c]
+              15  -[NSRunLoop(NSRunLoop) runMode:beforeDate:] + 212 (Foundation + 367736) [0x18b4c4c78]
+                15  CFRunLoopRunSpecific + 572 (CoreFoundation + 502248) [0x189ef49e8]
+                  14  __CFRunLoopRun + 1848 (CoreFoundation + 505768) [0x189ef57a8]
+                    14  __CFRunLoopDoTimers + 332 (CoreFoundation + 611228) [0x189f0f39c]
+                      14  __CFRunLoopDoTimer + 980 (CoreFoundation + 612448) [0x189f0f860]
+                        14  __CFRUNLOOP_IS_CALLING_OUT_TO_A_TIMER_CALLBACK_FUNCTION__ + 32 (CoreFoundation + 613280) [0x189f0fba0]
+                          14  WebCore::timerFired(__CFRunLoopTimer*, void*) + 68 (WebCore + 47544) [0x11a9339b8]
+                            14  WTF::Detail::CallableWrapper<WebCore::ThreadTimers::setSharedTimer(WebCore::SharedTimer*)::$_0, void>::call() + 264 (WebCore + 40351996) [0x11cfa38fc]
+                              14  WTF::Detail::CallableWrapper<WebCore::Timer::Timer<WebCore::WindowEventLoop, WebCore::WindowEventLoop>(WebCore::WindowEventLoop&, void (WebCore::WindowEventLoop::*)())::'lambda'(), void>::call() + 100 (WebCore + 31348612) [0x11c70d784]
+                                14  WebCore::WindowEventLoop::didReachTimeToRun() + 72 (WebCore + 31344060) [0x11c70c5bc]
+                                  14  WebCore::EventLoop::run(std::__1::optional<WTF::ApproximateTime>) + 308 (WebCore + 30571556) [0x11c64fc24]
+                                    14  WTF::Detail::CallableWrapper<void WebCore::ActiveDOMObject::queueTaskKeepingObjectAlive<WebCore::WebSocket, WebCore::WebSocket::didReceiveBinaryData(WTF::Vector<unsigned char, 0ul, WTF::CrashOnOverflow, 16ul, WTF::FastMalloc>&&)::$_0>(WebCore::WebSocket&, WebCore::TaskSource, WebCore::WebSocket::didReceiveBinaryData(WTF::Vector<unsigned char, 0ul, WTF::CrashOnOverflow, 16ul, WTF::FastMalloc>&&)::$_0&&)::'lambda'(), void>::call() + 276 (WebCore + 24066932) [0x11c01bb74]
+                                      14  WebCore::EventTarget::dispatchEvent(WebCore::Event&) + 292 (WebCore + 30593332) [0x11c655134]
+                                        14  WebCore::EventTarget::fireEventListeners(WebCore::Event&, WebCore::EventTarget::EventInvokePhase) + 424 (WebCore + 30543672) [0x11c648f38]
+                                          14  WebCore::EventTarget::innerInvokeEventListeners(WebCore::Event&, WTF::Vector<WTF::RefPtr<WebCore::RegisteredEventListener, WTF::RawPtrTraits<WebCore::RegisteredEventListener>, WTF::DefaultRefDerefTraits<WebCore::RegisteredEventListener>>, 1ul, WTF::CrashOnOverflow, 2ul, WTF::FastMalloc>, WebCore::EventTarget::EventInvokePhase) + 472 (WebCore + 30594548) [0x11c6555f4]
+                                            14  WebCore::JSEventListener::handleEvent(WebCore::ScriptExecutionContext&, WebCore::Event&) + 1068 (WebCore + 25820488) [0x11c1c7d48]
+                                              14  WebCore::JSExecState::~JSExecState() + 140 (WebCore + 25786480) [0x11c1bf870]
+                                                14  WebCore::EventLoopTaskGroup::performMicrotaskCheckpoint() + 88 (WebCore + 30580096) [0x11c651d80]
+                                                  14  WebCore::MicrotaskQueue::performMicrotaskCheckpoint() + 348 (WebCore + 30777548) [0x11c6820cc]
+                                                    14  WebCore::MicrotaskQueue::runJSMicrotask(JSC::JSGlobalObject*, JSC::VM&, JSC::QueuedTask&) + 276 (WebCore + 30776688) [0x11c681d70]
+                                                      14  JSC::profiledCall(JSC::JSGlobalObject*, JSC::ProfilingReason, JSC::JSValue, JSC::CallData const&, JSC::JSValue, JSC::ArgList const&, WTF::NakedPtr<JSC::Exception>&) + 112 (JavaScriptCore + 16732212) [0x10f8c5034]
+                                                        14  JSC::Interpreter::executeCall(JSC::JSObject*, JSC::CallData const&, JSC::JSValue, JSC::ArgList const&) + 3168 (JavaScriptCore + 14651840) [0x10f6c91c0]
+                                                          14  ??? [0x1237b4548]
+                                                            9   ??? [0x124804658]
+                                                              5   ??? [0x123f277ec]
+                                                                5   ??? [0x124b3e028]
+                                                                  5   ??? [0x124ae8188]
+                                                                    5   ??? [0x124828ee8]
+                                                                      5   ??? [0x1239fd6c4]
+                                                                        5   ??? [0x123d5a5a4]
+                                                                          5   ??? [0x1248a5654]
+                                                                            5   ??? [0x1239fd6c4]
+                                                                              5   ??? [0x123d5a5a4]
+                                                                                5   ??? [0x1248a5654]
+                                                                                  5   ??? [0x12453c474]
+                                                                                    5   ??? [0x123d4dc78]
+                                                                                      4   ??? [0x123a50ab4]
+                                                                                        4   ??? [0x12451720c]
+                                                                                          3   ??? [0x12485a670]
+                                                                                            1   ??? [0x123eb46e4]
+                                                                                              1   ??? [0x123eb46b4]
+                                                                                                1   JSC::arrayProtoFuncSort(JSC::JSGlobalObject*, JSC::CallFrame*) + 14900 (JavaScriptCore + 16541084) [0x10f89659c]
+                                                                                                  1   vmEntryToJavaScriptGateAfter + 24 (JavaScriptCore + 25997036) [0x11019aeec]
+                                                                                            1   ??? [0x123eb4548]
+                                                                                              1   ??? [0x123b9269c]
+                                                                                            1   ??? [0x123eb41d0]
+                                                                                              1   ??? [0x123b927cc]
+                                                                                          1   ??? [0x12452d9f4]
+                                                                                            1   ??? [0x123eb46e4]
+                                                                                              1   ??? [0x123eb46b4]
+                                                                                                1   JSC::arrayProtoFuncSort(JSC::JSGlobalObject*, JSC::CallFrame*) + 14200 (JavaScriptCore + 16540384) [0x10f8962e0]
+                                                                                      1   ??? [0x12398d234]
+                                                                                        1   ??? [0x12451720c]
+                                                                                          1   ??? [0x12452d9f4]
+                                                                                            1   ??? [0x1237bc208]
+                                                              3   ??? [0x123f2aad4]
+                                                                3   ??? [0x1242ad990]
+                                                                  3   ??? [0x124ae8188]
+                                                                    3   ??? [0x124828ee8]
+                                                                      3   ??? [0x1239fd6c4]
+                                                                        3   ??? [0x123d5a5a4]
+                                                                          3   ??? [0x1248a5654]
+                                                                            3   ??? [0x1239fd6c4]
+                                                                              3   ??? [0x123d5a5a4]
+                                                                                3   ??? [0x1248a5654]
+                                                                                  3   ??? [0x12453c474]
+                                                                                    2   ??? [0x12400e828]
+                                                                                      2   ??? [0x123a50ab4]
+                                                                                        1   ??? [0x124517f18]
+                                                                                          1   ??? [0x1237b4068]
+                                                                                            1   ??? [0x1239fd6c4]
+                                                                                              1   ??? [0x123d5a5a4]
+                                                                                                1   ??? [0x1248a5654]
+                                                                                                  1   ??? [0x123e3c6f4]
+                                                                                                    1   ??? [0x1237e0170]
+                                                                                                      1   ??? [0x12453c474]
+                                                                                                        1   ??? [0x12400e828]
+                                                                                                          1   ??? [0x124106db8]
+                                                                                                            1   ??? [0x12485a670]
+                                                                                                              1   ??? [0x123eb46e4]
+                                                                                                                1   ??? [0x123eb46b4]
+                                                                                                                  1   JSC::arrayProtoFuncSort(JSC::JSGlobalObject*, JSC::CallFrame*) + 14348 (JavaScriptCore + 16540532) [0x10f896374]
+                                                                                        1   ??? [0x12451720c]
+                                                                                          1   ??? [0x12485a5d8]
+                                                                                            1   ??? [0x123eb3674]
+                                                                                    1   ??? [0x123d4dc78]
+                                                                                      1   ??? [0x123a50ab4]
+                                                                                        1   ??? [0x12451720c]
+                                                                                          1   ??? [0x12452d9f4]
+                                                                                            1   ??? [0x123eb46e4]
+                                                                                              1   ??? [0x123eb46b4]
+                                                                                                1   JSC::arrayProtoFuncSort(JSC::JSGlobalObject*, JSC::CallFrame*) + 14812 (JavaScriptCore + 16540996) [0x10f896544]
+                                                              1   ??? [0x1237b4068]
+                                                                1   ??? [0x1242ad990]
+                                                                  1   ??? [0x124ae8188]
+                                                                    1   ??? [0x124828ee8]
+                                                                      1   ??? [0x1239fd6c4]
+                                                                        1   ??? [0x123d5a5a4]
+                                                                          1   ??? [0x1248a5654]
+                                                                            1   ??? [0x1239fd6c4]
+                                                                              1   ??? [0x123d5a5a4]
+                                                                                1   ??? [0x1248a5654]
+                                                                                  1   ??? [0x12453c474]
+                                                                                    1   ??? [0x123d4dc78]
+                                                                                      1   ??? [0x1237b4068]
+                                                                                        1   ??? [0x12451720c]
+                                                                                          1   ??? [0x12452d980]
+                                                                                            1   ??? [0x1242ae720]
+                                                            2   ??? [0x1237b4008]
+                                                              2   ??? [0x1237b4068]
+                                                                1   ??? [0x1242ad990]
+                                                                  1   ??? [0x1237b4008]
+                                                                    1   ??? [0x1237b4068]
+                                                                      1   ??? [0x1239fd6c4]
+                                                                        1   ??? [0x1242dd89c]
+                                                                          1   ??? [0x1242ddf0c]
+                                                                            1   ??? [0x1239fd6c4]
+                                                                              1   ??? [0x1242dd89c]
+                                                                                1   ??? [0x1242ddf0c]
+                                                                                  1   ??? [0x12453c474]
+                                                                                    1   ??? [0x123d4dc78]
+                                                                                      1   ??? [0x1237b4068]
+                                                                                        1   ??? [0x12451720c]
+                                                                                          1   ??? [0x1242c03f4]
+                                                                                            1   ??? [0x124511634]
+                                                                                              1   ??? [0x124511604]
+                                                                                                1   JSC::arrayProtoFuncSort(JSC::JSGlobalObject*, JSC::CallFrame*) + 12184 (JavaScriptCore + 16538368) [0x10f895b00]
+                                                                                                  1   ??? [0x1237b4548]
+                                                                                                    1   ??? [0x1237ca760]
+                                                                1   ??? [0x1237b4008]
+                                                                  1   ??? [0x1237b4008]
+                                                                    1   ??? [0x1237b4068]
+                                                                      1   ??? [0x1240d62d0]
+                                                                        1   ??? [0x12439f69c]
+                                                                          1   ??? [0x1243aa80c]
+                                                                            1   ??? [0x1240d62d0]
+                                                                              1   ??? [0x12439f69c]
+                                                                                1   ??? [0x1243aa80c]
+                                                                                  1   ??? [0x1243a95b8]
+                                                                                    1   ??? [0x1242731a0]
+                                                                                      1   ??? [0x1237b4068]
+                                                                                        1   ??? [0x1237b4008]
+                                                                                          1   ??? [0x12438947c]
+                                                                                            1   ??? [0x124493550]
+                                                                                              1   ??? [0x12404f338]
+                                                            2   ??? [0x124146358]
+                                                              1   ??? [0x1239377e8]
+                                                                1   ??? [0x123b6f71c]
+                                                                  1   ??? [0x123825d80]
+                                                                    1   ??? [0x123e8d6e8]
+                                                                      1   ??? [0x123808f74]
+                                                                        1   ??? [0x123811a04]
+                                                                          1   ??? [0x123b03b54]
+                                                                            1   ??? [0x123808f74]
+                                                                              1   ??? [0x123811a04]
+                                                                                1   ??? [0x123b03b54]
+                                                                                  1   ??? [0x12535fb74]
+                                                                                    1   ??? [0x12446d078]
+                                                                                      1   ??? [0x12398cbd4]
+                                                                                        1   ??? [0x12538620c]
+                                                                                          1   ??? [0x1253889f4]
+                                                                                            1   ??? [0x125382734]
+                                                                                              1   ??? [0x125382704]
+                                                                                                1   JSC::arrayProtoFuncSort(JSC::JSGlobalObject*, JSC::CallFrame*) + 14176 (JavaScriptCore + 16540360) [0x10f8962c8]
+                                                                                                  1   vmEntryToJavaScriptWith2Arguments + 36 (JavaScriptCore + 25997196) [0x11019af8c]
+                                                              1   ??? [0x1237b4068]
+                                                                1   ??? [0x123a6858c]
+                                                                  1   ??? [0x123825d80]
+                                                                    1   ??? [0x123e8d6e8]
+                                                                      1   ??? [0x123808f74]
+                                                                        1   ??? [0x123811a04]
+                                                                          1   ??? [0x123b03b54]
+                                                                            1   ??? [0x123808f74]
+                                                                              1   ??? [0x123811a04]
+                                                                                1   ??? [0x123b03b54]
+                                                                                  1   ??? [0x12535fb74]
+                                                                                    1   ??? [0x12446d078]
+                                                                                      1   ??? [0x1237b4068]
+                                                                                        1   ??? [0x12538620c]
+                                                                                          1   ??? [0x1253889f4]
+                                                                                            1   ??? [0x125382734]
+                                                                                              1   ??? [0x125382704]
+                                                                                                1   JSC::arrayProtoFuncSort(JSC::JSGlobalObject*, JSC::CallFrame*) + 9616 (JavaScriptCore + 16535800) [0x10f8950f8]
+                                                                                                  1   JSC::JSValue JSC::JSObject::getIfPropertyExists<unsigned long long>(JSC::JSGlobalObject*, unsigned long long const&) + 196 (JavaScriptCore + 12489324) [0x10f4b926c]
+                                                                                                    1   JSC::JSObject::getOwnPropertySlotByIndex(JSC::JSObject*, JSC::JSGlobalObject*, unsigned int, JSC::PropertySlot&) + 36 (JavaScriptCore + 18177180) [0x10fa25c9c]
+                                                            1   ??? [0x12382f75c]
+                                                              1   ??? [0x123817aec]
+                                                                1   ??? [0x1238b661c]
+                                                                  1   ??? [0x1238c4088]
+                                                                    1   ??? [0x123868ecc]
+                                                                      1   ??? [0x1237e1454]
+                                                                        1   ??? [0x123813714]
+                                                                          1   ??? [0x123876254]
+                                                                            1   ??? [0x1237e1454]
+                                                                              1   ??? [0x123813714]
+                                                                                1   ??? [0x123876254]
+                                                                                  1   ??? [0x12494a174]
+                                                                                    1   ??? [0x123bea878]
+                                                                                      1   ??? [0x1237b4068]
+                                                                                        1   ??? [0x12492300c]
+                                                                                          1   ??? [0x123873768]
+                                                                                            1   ??? [0x12491df34]
+                                                                                              1   ??? [0x12491df04]
+                                                                                                1   JSC::arrayProtoFuncSort(JSC::JSGlobalObject*, JSC::CallFrame*) + 12184 (JavaScriptCore + 16538368) [0x10f895b00]
+                                                                                                  1   ??? [0x1237b4548]
+                                                                                                    1   ??? [0x12412d82c]
+                  1   __CFRunLoopRun + 840 (CoreFoundation + 504760) [0x189ef53b8]
+                    1   __CFRunLoopDoSources0 + 232 (CoreFoundation + 509796) [0x189ef6764]
+                      1   __CFRunLoopDoSource0 + 172 (CoreFoundation + 510456) [0x189ef69f8]
+                        1   __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__ + 28 (CoreFoundation + 510564) [0x189ef6a64]
+                          1   WTF::RunLoop::performWork(void*) + 36 (JavaScriptCore + 1888052) [0x10ea9cf34]
+                            1   WTF::RunLoop::performWork() + 524 (JavaScriptCore + 1881276) [0x10ea9b4bc]
+                              1   WTF::Detail::CallableWrapper<IPC::Connection::enqueueIncomingMessage(WTF::UniqueRef<IPC::Decoder>)::$_2, void>::call() + 132 (WebKit + 17195708) [0x1088ca2bc]
+                                1   IPC::Connection::dispatchMessage(WTF::UniqueRef<IPC::Decoder>) + 480 (WebKit + 17178496) [0x1088c5f80]
+                                  1   WebKit::AuxiliaryProcess::didReceiveMessage(IPC::Connection&, IPC::Decoder&) + 160 (WebKit + 3753072) [0x107bf8470]
+                                    1   WebKit::AuxiliaryProcess::dispatchMessage(IPC::Connection&, IPC::Decoder&) + 40 (WebKit + 8700312) [0x1080b0198]
+                                      1   IPC::MessageReceiverMap::dispatchMessage(IPC::Connection&, IPC::Decoder&) + 264 (WebKit + 17205364) [0x1088cc874]
+                                        1   WebKit::WebPage::didReceiveMessage(IPC::Connection&, IPC::Decoder&) + 33640 (WebKit + 4767296) [0x107cefe40]
+                                          1   WebKit::WebPage::mouseEvent(WTF::ObjectIdentifierGeneric<WebCore::FrameIdentifierType, WTF::ObjectIdentifierMainThreadAccessTraits<unsigned long long>, unsigned long long>, WebKit::WebMouseEvent const&, std::__1::optional<WTF::Vector<WebKit::SandboxExtensionHandle, 0ul, WTF::CrashOnOverflow, 16ul, WTF::FastMalloc>>&&) + 592 (WebKit + 14595180) [0x10864f46c]
+                                            1   WebKit::WebFrame::handleMouseEvent(WebKit::WebMouseEvent const&) + 520 (WebKit + 14520660) [0x10863d154]
+                                              1   WebCore::EventHandler::mouseMoved(WebCore::PlatformMouseEvent const&) + 288 (WebCore + 943328) [0x11aa0e4e0]
+                                                1   WebCore::EventHandler::handleMouseMoveEvent(WebCore::PlatformMouseEvent const&, WebCore::HitTestResult*, bool) + 848 (WebCore + 944744) [0x11aa0ea68]
+                                                  1   WebCore::EventHandler::prepareMouseEvent(WebCore::HitTestRequest const&, WebCore::PlatformMouseEvent const&) + 244 (WebCore + 38300976) [0x11cdaed30]
+                                                    1   WebCore::Document::prepareMouseEvent(WebCore::HitTestRequest const&, WebCore::LayoutPoint const&, WebCore::PlatformMouseEvent const&) + 672 (WebCore + 956432) [0x11aa11810]
+                                                      1   WebCore::Document::updateHoverActiveState(WebCore::HitTestRequest const&, WebCore::Element*, WebCore::Document::CaptureChange) + 5772 (WebCore + 29999940) [0x11c5c4344]
+                                                        1   WebCore::Style::Invalidator::invalidateWithMatchElementRuleSets(WebCore::Element&, WTF::HashMap<WebCore::Style::MatchElement, WTF::Vector<WebCore::Style::RuleSetAndNegation, 1ul, WTF::CrashOnOverflow, 16ul, WTF::FastMalloc>, WTF::IntHash<WebCore::Style::MatchElement>, WTF::StrongEnumHashTraits<WebCore::Style::MatchElement>, WTF::HashTraits<WTF::Vector<WebCore::Style::RuleSetAndNegation, 1ul, WTF::CrashOnOverflow, 16ul, WTF::FastMalloc>>, WTF::HashTableTraits, (WTF::ShouldValidateKey)1, WTF::FastMalloc> const&) + 276 (WebCore + 47945140) [0x11d6e15b4]
+                                                          1   WebCore::Style::Invalidator::invalidateStyleWithMatchElement(WebCore::Element&, WebCore::Style::MatchElement) + 980 (WebCore + 47938980) [0x11d6dfda4]
+                                                            1   WebCore::Style::Invalidator::invalidateStyleForDescendants(WebCore::Element&, WebCore::Style::SelectorMatchingState*) + 348 (WebCore + 47935756) [0x11d6df10c]
+                                                              1   WebCore::Style::Invalidator::invalidateIfNeeded(WebCore::Element&, WebCore::Style::SelectorMatchingState*) + 368 (WebCore + 47933556) [0x11d6de874]
+                                                                1   WebCore::Style::ElementRuleCollector::collectMatchingRules(WebCore::Style::CascadeLevel) + 828 (WebCore + 47635344) [0x11d695b90]
+                                                                  1   ??? [0x12391a800]
+  1   thread_start + 8 (libsystem_pthread.dylib + 7040) [0x189e06b80]
+    1   _pthread_start + 136 (libsystem_pthread.dylib + 27592) [0x189e0bbc8]
+      1   scavenger_thread_main + 940 (JavaScriptCore + 25879940) [0x11017e584]
+        1   pas_physical_page_sharing_pool_scavenge + 348 (JavaScriptCore + 25862804) [0x11017a294]
+          1   decommit_all + 936 (JavaScriptCore + 25776360) [0x1101650e8]
+            1   madvise + 8 (libsystem_kernel.dylib + 14448) [0x189dcc870]
+              1   <Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+
+  Binary Images:
+           0x102b38000 -        0x102b3ffff  com.apple.WebKit.WebContent 20622 (20622.2.11.119.1) <E182F4E3-356F-3BBB-98E1-BA1F344B1A12>  /Volumes/VOLUME/*/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent
+           0x107864000 -        0x108d87fff  com.apple.WebKit 20621 (20621.3.11.11.3)             <1C5E29BF-FFF8-306C-889B-EBE30953A47C>  /System/Library/Frameworks/WebKit.framework/Versions/A/WebKit
+           0x10e8d0000 -        0x110443fff  com.apple.JavaScriptCore 20621 (20621.3.11.11.3)     <D0F58A3C-EE3D-32DC-A81C-33826231DCD1>  /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/JavaScriptCore
+           0x11a928000 -        0x11e337fff  com.apple.WebCore 20621 (20621.3.11.11.3)            <57BFEC14-669A-3FEE-8249-5B29B0FDCD6A>  /System/Library/Frameworks/WebKit.framework/Versions/A/Frameworks/WebCore.framework/Versions/A/WebCore
+           0x189a64000 -        0x189aff57b  dyld (1286.10)                                       <E4E5CD37-5339-3136-B2C5-0C80F0720C26>  /usr/lib/dyld
+           0x189b04000 -        0x189b4e8ff  libxpc.dylib (2894.140.12.700.1)                     <B7303BD5-2EAD-3A97-8419-5A1454C5E513>  /usr/lib/system/libxpc.dylib
+           0x189dc9000 -        0x189e04663  libsystem_kernel.dylib (11417.140.69.705.2)          <1D4FFD44-8926-3746-924E-DEEF5B777588>  /usr/lib/system/libsystem_kernel.dylib
+           0x189e05000 -        0x189e11a77  libsystem_pthread.dylib (536.0.0.701.1)              <022DC315-CF35-38DA-939E-03800B5BEFF2>  /usr/lib/system/libsystem_pthread.dylib
+           0x189e7a000 -        0x18a3b8fff  com.apple.CoreFoundation 6.9 (3603.1.403)            <37CEBB20-0448-392C-9F01-F5BD87EB295E>  /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+           0x18b46b000 -        0x18c25477f  com.apple.Foundation 6.9 (3603.1.403)                <491F91B7-5A62-3FE6-BB46-47A189BDBA6D>  /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation
+
+
+Powerstats for:   com.apple.dt.Xcode.ITunesSoftwareService (com.apple.dt.Xcode.ITunesSoftwareService)
+UUID:             E9AB4CFD-D760-3F18-AD74-F8EDBA2D2C49
+Path:             /Applications/Xcode.app/Contents/SharedFrameworks/DVTITunesSoftware.framework/Versions/A/XPCServices/com.apple.dt.Xcode.ITunesSoftwareService.xpc/Contents/MacOS/com.apple.dt.Xcode.ITunesSoftwareService
+Identifier:       com.apple.dt.Xcode.ITunesSoftwareService
+Version:          16.0 (24527)
+Build Version:    1
+Project Name:     DVTFrameworks
+Source Version:   24527000000000000
+Team ID:          59GAB85EFG
+Resource Coalition: 3 samples "com.apple.dt.Xcode"(1002)
+On Behalf Of:     1 sample UNKNOWN [20005] (1 sample originated by UNKNOWN [20005])
+Architecture:     arm64
+Start time:       2026-01-19 15:03:12.211 +0800
+End time:         2026-01-19 15:04:16.775 +0800
+Num samples:      3 (12%)
+Primary state:    2 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Utility, Requested Thread QoS Utility, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 3 samples Active
+Power Source:     3 samples on Battery, 0 samples on AC
+  2  start_wqthread + 8 (libsystem_pthread.dylib + 7028) [0x189e06b74]
+    2  _pthread_wqthread + 232 (libsystem_pthread.dylib + 11748) [0x189e07de4]
+      2  _dispatch_worker_thread2 + 156 (libdispatch.dylib + 83412) [0x189c665d4]
+        1  _dispatch_root_queue_drain + 364 (libdispatch.dylib + 81456) [0x189c65e30]
+          1  _dispatch_async_redirect_invoke + 580 (libdispatch.dylib + 23636) [0x189c57c54]
+            1  _dispatch_continuation_pop + 596 (libdispatch.dylib + 26080) [0x189c585e0]
+              1  _dispatch_client_callout + 16 (libdispatch.dylib + 112732) [0x189c6d85c]
+                1  _dispatch_block_async_invoke2 + 148 (libdispatch.dylib + 70456) [0x189c63338]
+                  1  __NSOQSchedule_f + 164 (Foundation + 249572) [0x18b4a7ee4]
+                    1  __NSOPERATIONQUEUE_IS_STARTING_AN_OPERATION__ + 16 (Foundation + 249844) [0x18b4a7ff4]
+                      1  -[NSOperation start] + 640 (Foundation + 250492) [0x18b4a827c]
+                        1  __NSOPERATION_IS_INVOKING_MAIN__ + 16 (Foundation + 253708) [0x18b4a8f0c]
+                          1  -[NSBlockOperation main] + 96 (Foundation + 253812) [0x18b4a8f74]
+                            1  __NSBLOCKOPERATION_IS_CALLING_OUT_TO_A_BLOCK__ + 24 (Foundation + 254124) [0x18b4a90ac]
+                              1  __21-[CDUploader session]_block_invoke + 84 (ContentDelivery + 326688) [0x1051bfc20]
+                                1  -[CDOSLogFilter filterWithAppName:subsystem:searchStrings:] + 220 (ContentDelivery + 740776) [0x105224da8]
+                                  1  -[CDOSLogFilter filterWithPredicate:searchStrings:] + 276 (ContentDelivery + 741136) [0x105224f10]
+                                    1  -[CDCmdLineExecutor execute:arguments:environment:] + 212 (ContentDelivery + 1012048) [0x105267150]
+                                      1  -[CDAbstractToolExecutor execute] + 2152 (ContentDelivery + 895616) [0x10524aa80]
+                                        1  -[CDTask execute] + 116 (ContentDelivery + 884668) [0x105247fbc]
+                                          1  -[CDTask launch] + 620 (ContentDelivery + 884400) [0x105247eb0]
+                                            1  -[NSRunLoop(NSRunLoop) runUntilDate:] + 100 (Foundation + 840612) [0x18b5383a4]
+                                              1  -[NSRunLoop(NSRunLoop) runMode:beforeDate:] + 212 (Foundation + 367736) [0x18b4c4c78]
+                                                1  CFRunLoopRunSpecific + 352 (CoreFoundation + 502028) [0x189ef490c]
+                                                  1  __CFRunLoopCopyMode + 164 (CoreFoundation + 1371016) [0x189fc8b88]
+                                                    1  _CFRetain + 124 (CoreFoundation + 1091188) [0x189f84674]
+                                                      1  <on behalf of UNKNOWN [20005] (originated by UNKNOWN [20005]), Effective Thread QoS User Initiated, Requested Thread QoS User Initiated>
+        1  _dispatch_root_queue_drain + 208 (libdispatch.dylib + 81300) [0x189c65d94]
+          1  _dispatch_root_queue_poke_slow + 316 (libdispatch.dylib + 63924) [0x189c619b4]
+            1  __workq_kernreturn + 8 (libsystem_kernel.dylib + 10416) [0x189dcb8b0]
+  1  start_wqthread + 0 (libsystem_pthread.dylib + 7020) [0x189e06b6c]
+
+  Binary Images:
+           0x102cc8000 -        0x102ce3fff  com.apple.dt.Xcode.ITunesSoftwareService 16.0 (24527) <E9AB4CFD-D760-3F18-AD74-F8EDBA2D2C49>  /Applications/Xcode.app/Contents/SharedFrameworks/DVTITunesSoftware.framework/Versions/A/XPCServices/com.apple.dt.Xcode.ITunesSoftwareService.xpc/Contents/MacOS/com.apple.dt.Xcode.ITunesSoftwareService
+           0x105170000 -        0x105323fff  com.apple.amp.ContentDelivery 26.10.1 (171001)        <585831D4-B4B6-3182-AAF4-31FE83EE1850>  /Applications/Xcode.app/Contents/SharedFrameworks/ContentDelivery.framework/Versions/A/ContentDelivery
+           0x189c52000 -        0x189c9875f  libdispatch.dylib (1521.140.2)                        <63A54CE1-2AB6-3673-82E4-D8489D811475>  /usr/lib/system/libdispatch.dylib
+           0x189dc9000 -        0x189e04663  libsystem_kernel.dylib (11417.140.69.705.2)           <1D4FFD44-8926-3746-924E-DEEF5B777588>  /usr/lib/system/libsystem_kernel.dylib
+           0x189e05000 -        0x189e11a77  libsystem_pthread.dylib (536.0.0.701.1)               <022DC315-CF35-38DA-939E-03800B5BEFF2>  /usr/lib/system/libsystem_pthread.dylib
+           0x189e7a000 -        0x18a3b8fff  com.apple.CoreFoundation 6.9 (3603.1.403)             <37CEBB20-0448-392C-9F01-F5BD87EB295E>  /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+           0x18b46b000 -        0x18c25477f  com.apple.Foundation 6.9 (3603.1.403)                 <491F91B7-5A62-3FE6-BB46-47A189BDBA6D>  /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation
+
+
+Powerstats for:   WindowServer
+UUID:             18227367-80F6-37DD-B301-CE194CF5A9A7
+Path:             /System/Library/PrivateFrameworks/SkyLight.framework/Versions/A/Resources/WindowServer
+Codesigning ID:   com.apple.WindowServer
+Resource Coalition: 2 samples "com.apple.WindowServer"(353)
+Architecture:     arm64e
+Start time:       2026-01-19 15:03:33.963 +0800
+End time:         2026-01-19 15:04:14.440 +0800
+Num samples:      2 (8%)
+Primary state:    2 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Unspecified, Requested Thread QoS Unspecified, Override Thread QoS Unspecified, e-core
+User Activity:    0 samples Idle, 2 samples Active
+Power Source:     2 samples on Battery, 0 samples on AC
+  2  start + 6076 (dyld + 27544) [0x189a6ab98]
+    2  ??? (WindowServer + 1880) [0x100c78758]
+      2  SLXServer + 1396 (SkyLight + 4222472) [0x190249e08]
+        2  server_loop + 140 (SkyLight + 4222920) [0x190249fc8]
+          2  CGXRunOneServicesPass + 1492 (SkyLight + 4220220) [0x19024953c]
+            2  post_port_data + 288 (SkyLight + 4220964) [0x190249824]
+              1  eventNotificationHandler(unsigned int, mach_msg_header_t*, void*) + 16 (SkyLight + 4037072) [0x19021c9d0]
+                1  CGXRunOneEventPass + 1064 (SkyLight + 4034296) [0x19021bef8]
+                  1  sHIDContinuation(SLSEventRecord*, void*) + 1140 (SkyLight + 1409800) [0x18ff9b308]
+                    1  add_event_to_tap(CGXEventTap*, SLSEventRecord*) + 88 (SkyLight + 2526620) [0x1900abd9c]
+                      1  add_event_vector_to_tap(CGXEventTap*, std::__1::vector<SLSEventRecord*, std::__1::allocator<SLSEventRecord*>>&) + 664 (SkyLight + 2527352) [0x1900ac078]
+                        1  add_event_vector_to_tap(CGXEventTap*, std::__1::vector<SLSEventRecord*, std::__1::allocator<SLSEventRecord*>>&) + 664 (SkyLight + 2527352) [0x1900ac078]
+                          1  add_event_vector_to_tap(CGXEventTap*, std::__1::vector<SLSEventRecord*, std::__1::allocator<SLSEventRecord*>>&) + 664 (SkyLight + 2527352) [0x1900ac078]
+                            1  add_event_vector_to_tap(CGXEventTap*, std::__1::vector<SLSEventRecord*, std::__1::allocator<SLSEventRecord*>>&) + 664 (SkyLight + 2527352) [0x1900ac078]
+                              1  add_event_vector_to_tap(CGXEventTap*, std::__1::vector<SLSEventRecord*, std::__1::allocator<SLSEventRecord*>>&) + 664 (SkyLight + 2527352) [0x1900ac078]
+                                1  post_event_vector_after_tap_id(unsigned int, unsigned int, std::__1::vector<SLSEventRecord*, std::__1::allocator<SLSEventRecord*>>) + 332 (SkyLight + 2528732) [0x1900ac5dc]
+                                  1  sPostContinuation(SLSEventRecord*, void*) + 6928 (SkyLight + 4046768) [0x19021efb0]
+                                    1  route_annotated_event(SLSEventRecord*, bool, bool, bool, bool) + 312 (SkyLight + 4048772) [0x19021f784]
+                                      1  CPXDispatchEvent + 4432 (SkyLight + 832848) [0x18ff0e550]
+                                        1  CGXPostEventByConnection + 340 (SkyLight + 4049472) [0x19021fa40]
+                                          1  doPostBackgroundEvent(CGXConnection*, SLSEventRecord*) + 452 (SkyLight + 4038000) [0x19021cd70]
+                                            1  CGXFilterEventToConnection + 248 (SkyLight + 2529456) [0x1900ac8b0]
+                                              1  CGSEncodeEventRecord + 88 (SkyLight + 1580456) [0x18ffc4da8]
+                                                1  objc_msgSend + 64 (libobjc.A.dylib + 38976) [0x189a19840]
+              1  non_coalesced_timer_handler + 24 (SkyLight + 3951416) [0x190207b38]
+                1  run_timer_pass + 520 (SkyLight + 3951148) [0x190207a2c]
+                  1  update_display_callback(void*, double) + 1776 (SkyLight + 3313444) [0x19016bf24]
+                    1  CGXUpdateDisplay + 104 (SkyLight + 3362688) [0x190177f80]
+                      1  WS::Updater::UpdateDisplays(CGXConnection*, bool, std::__1::vector<std::__1::shared_ptr<WS::Displays::Display>, std::__1::allocator<std::__1::shared_ptr<WS::Displays::Display>>>) + 4972 (SkyLight + 3367728) [0x190179330]
+                        1  WS::Updater::prepare_coreanimation(WS::Updater::UpdateState&, CGXWindowSubArray) + 8484 (SkyLight + 3402536) [0x190181b28]
+                          1  WS::Updater::defenestrator2::ca_prepare_begin_window_update(CGXWindow*, WS::Updater::UpdateState&) + 308 (SkyLight + 3470400) [0x190192440]
+                            1  WSCAWindowBacking::BeginUpdate(LayerUpdateParams) + 488 (SkyLight + 2661308) [0x1900ccbbc]
+                              1  WSCALayerBacking::RunUpdate(WSCARenderContextScope&, bool) + 876 (SkyLight + 2935196) [0x19010f99c]
+                                1  CARenderUpdateAddContext2 + 68 (QuartzCore + 1759768) [0x1930fda18]
+                                  1  CA::Render::Update::add_context(CA::Render::Context*, CA::Render::Layer*, CA::Transform const*) + 9436 (QuartzCore + 549960) [0x192fd6448]
+                                    1  CA::Render::Updater::prepare_layer(CA::Render::Updater::GlobalState&, CA::Render::Updater::LocalState&, CA::Render::LayerNode*, CA::Render::Updater::LayerShapes&, unsigned long long&) + 8500 (QuartzCore + 1704484) [0x1930f0224]
+                                      1  CA::Render::Updater::prepare_layer(CA::Render::Updater::GlobalState&, CA::Render::Updater::LocalState&, CA::Render::LayerNode*, CA::Render::Updater::LayerShapes&, unsigned long long&) + 8500 (QuartzCore + 1704484) [0x1930f0224]
+                                        1  CA::Render::Updater::prepare_layer(CA::Render::Updater::GlobalState&, CA::Render::Updater::LocalState&, CA::Render::LayerNode*, CA::Render::Updater::LayerShapes&, unsigned long long&) + 8500 (QuartzCore + 1704484) [0x1930f0224]
+                                          1  CA::Render::Updater::prepare_layer(CA::Render::Updater::GlobalState&, CA::Render::Updater::LocalState&, CA::Render::LayerNode*, CA::Render::Updater::LayerShapes&, unsigned long long&) + 8500 (QuartzCore + 1704484) [0x1930f0224]
+                                            1  CA::Render::Updater::prepare_layer(CA::Render::Updater::GlobalState&, CA::Render::Updater::LocalState&, CA::Render::LayerNode*, CA::Render::Updater::LayerShapes&, unsigned long long&) + 928 (QuartzCore + 1696912) [0x1930ee490]
+
+  Binary Images:
+           0x100c78000 -        0x100c87fff  WindowServer (891.8)                  <18227367-80F6-37DD-B301-CE194CF5A9A7>  /System/Library/PrivateFrameworks/SkyLight.framework/Versions/A/Resources/WindowServer
+           0x189a10000 -        0x189a63893  libobjc.A.dylib (940.4)               <E6F30EB4-FACF-3381-AE46-10E556F1FC39>  /usr/lib/libobjc.A.dylib
+           0x189a64000 -        0x189aff57b  dyld (1286.10)                        <E4E5CD37-5339-3136-B2C5-0C80F0720C26>  /usr/lib/dyld
+           0x18fe43000 -        0x19036905f  com.apple.SkyLight 1.600.0 (891.8)    <95EC3610-E01A-3730-9CD5-B6B18C5B0560>  /System/Library/PrivateFrameworks/SkyLight.framework/Versions/A/SkyLight
+           0x192f50000 -        0x193323c7f  com.apple.QuartzCore 1.11 (1156.18.1) <F4B507C4-0FAC-308A-AC29-FB3E64505CD8>  /System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore
+
+
+Powerstats for:   xpcproxy_sim
+UUID:             38D56565-6E70-39A6-A110-77278D38E31D
+Resource Coalition: 2 samples "com.apple.CoreSimulator.SimDevice.27BD6D2B-49B5-4264-A078-0ABD1C18E65B"(8627)
+Architecture:     arm64
+Start time:       2026-01-19 15:03:34.515 +0800
+End time:         2026-01-19 15:03:44.923 +0800
+Num samples:      2 (8%)
+Primary state:    2 samples Non-Frontmost App, Non-Suppressed, User mode, Effective Thread QoS Default, Requested Thread QoS Default, Override Thread QoS Unspecified, p-core
+User Activity:    0 samples Idle, 2 samples Active
+Power Source:     2 samples on Battery, 0 samples on AC
+  2  start + 5828 (dyld + 27296) [0x100d76aa0]
+    2  dyld4::start(dyld4::KernelArgs*, void*, void*)::$_0::operator()() const + 236 (dyld + 29144) [0x100d771d8]
+      2  dyld4::prepare(dyld4::APIs&, mach_o::Header const*) + 344 (dyld + 29508) [0x100d77344]
+        2  dyld4::prepareSim(dyld4::RuntimeState&, char const*) + 1308 (dyld + 34968) [0x100d78898]
+          1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 742212) [0x100d79344]
+            1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 743652) [0x100d798e4]
+              1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 830744) [0x100d8ed18]
+                1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 820328) [0x100d8c468]
+                  1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 820452) [0x100d8c4e4]
+                    1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 819356) [0x100d8c09c]
+                      1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 899244) [0x100d9f8ac]
+                        1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 844944) [0x100d92490]
+                          1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 819752) [0x100d8c228]
+                            1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 900332) [0x100d9fcec]
+                              1  ??? (<38D56565-6E70-39A6-A110-77278D38E31D> + 847316) [0x100d92dd4]
+          1  ??? [0x100f3d344]
+            1  ??? [0x100f3d6f0]
+              1  ??? [0x100f525e4]
+                1  ??? [0x100f525e4]
+                  1  ??? [0x100f525e4]
+                    1  ??? [0x100f525e4]
+                      1  ??? [0x100f525e4]
+                        1  ??? [0x100f525e4]
+                          1  ??? [0x100f525e4]
+                            1  ??? [0x100f525e4]
+                              1  ??? [0x100f525e4]
+                                1  ??? [0x100f525e4]
+                                  1  ??? [0x100f525e4]
+                                    1  ??? [0x100f525e4]
+                                      1  ??? [0x100f525e4]
+                                        1  ??? [0x100f525e4]
+                                          1  ??? [0x100f525e4]
+                                            1  ??? [0x100f525e4]
+                                              1  ??? [0x100f525e4]
+                                                1  ??? [0x100f525e4]
+                                                  1  ??? [0x100f525e4]
+                                                    1  ??? [0x100f525e4]
+                                                      1  ??? [0x100f525e4]
+                                                        1  ??? [0x100f525e4]
+                                                          1  ??? [0x100f525e4]
+                                                            1  ??? [0x100f525e4]
+                                                              1  ??? [0x100f525e4]
+                                                                1  ??? [0x100f525e4]
+                                                                  1  ??? [0x100f525e4]
+                                                                    1  ??? [0x100f525e4]
+                                                                      1  ??? [0x100f525e4]
+                                                                        1  ??? [0x100f525e4]
+                                                                          1  ??? [0x100f525e4]
+                                                                            1  ??? [0x100f525e4]
+                                                                              1  ??? [0x100f525e4]
+                                                                                1  ??? [0x100f525e4]
+                                                                                  1  ??? [0x100f525e4]
+                                                                                    1  ??? [0x100f525e4]
+                                                                                      1  ??? [0x100f525e4]
+                                                                                        1  ??? [0x100f525e4]
+                                                                                          1  ??? [0x100f525e4]
+                                                                                            1  ??? [0x100f525e4]
+                                                                                              1  ??? [0x100f525e4]
+                                                                                                1  ??? [0x100f525e4]
+                                                                                                  1  ??? [0x100f525e4]
+                                                                                                    1  ??? [0x100f525e4]
+                                                                                                      1  ??? [0x100f52578]
+                                                                                                        1  ??? [0x100f7675c]
+                                                                                                          1  ??? [0x100f74d94]
+                                                                                                            1  ??? [0x100f76a18]
+                                                                                                              1  ??? [0x100f52768]
+                                                                                                                1  ??? [0x100f71d84]
+
+  Binary Images:
+           0x100cc4000 -                ???  ???            <38D56565-6E70-39A6-A110-77278D38E31D>
+           0x100d70000 -        0x100e3ffff  dyld (1286.10) <E4E5CD37-5339-3136-B2C5-0C80F0720C26>  /usr/lib/dyld

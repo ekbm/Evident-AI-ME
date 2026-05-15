@@ -1,0 +1,202 @@
+You are Replit Agent. Upgrade the existing “Evident” app to support TWO MODES focused entirely on INTERNAL DATA ONLY (no external/web references).
+
+MODE 1: INDIVIDUAL — “Knowledge & Reports from Your Files”
+- Users upload offline files (documents, images, audio, video).
+- Evident extracts structured data, answers questions with citations, and generates reports.
+- All answers must come strictly from the user’s uploaded files.
+- If information is missing, Evident must say “Not found in provided files.”
+
+MODE 2: ENTERPRISE — “AI Readiness from Existing Systems”
+- Organisations connect offline or internal data sources (folders, exports, drives).
+- Evident ingests data on a daily snapshot basis (read-only).
+- Evident measures progress toward AI readiness using internal data only.
+- No external sources, no web search, no blending.
+
+GOAL
+Prepare Evident to be a safe, trustworthy pathway for individuals and organisations to:
+- Understand existing knowledge
+- Structure it for reuse
+- Generate reports
+- Progress toward AI readiness using their OWN data
+
+CORE PRINCIPLES (MUST FOLLOW)
+- Internal evidence ONLY.
+- Every answer must include citations to uploaded files OR clearly say “Not found”.
+- No guessing, no augmentation from the internet.
+- Read-only by default.
+- Human review encouraged everywhere.
+
+STACK
+- Frontend: React (existing)
+- Backend: Node.js + Express (existing)
+- DB: SQLite
+- Files: local /uploads for MVP (S3 later)
+- AI: embeddings + responses + transcription/vision for uploaded media only
+
+DATABASE (SQLite)
+Ensure or add:
+
+users:
+- id TEXT PRIMARY KEY
+- email TEXT UNIQUE
+- name TEXT
+- created_at TEXT
+
+workspaces:
+- id TEXT PRIMARY KEY
+- name TEXT
+- plan TEXT          -- FREE|PRO|PLUS|PREMIUM_ORG
+- created_at TEXT
+
+workspace_members:
+- workspace_id TEXT
+- user_id TEXT
+- role TEXT          -- admin|editor|viewer
+
+assets:
+- id TEXT PRIMARY KEY
+- workspace_id TEXT
+- filename TEXT
+- mime TEXT
+- size_bytes INTEGER
+- source_type TEXT   -- upload|connector
+- created_at TEXT
+
+artifacts:
+- id TEXT PRIMARY KEY
+- asset_id TEXT
+- kind TEXT          -- extracted_text|ocr_text|transcript|report_output|structured_data
+- metadata_json TEXT
+- created_at TEXT
+
+chunks:
+- id TEXT PRIMARY KEY
+- workspace_id TEXT
+- asset_id TEXT
+- source_ref TEXT    -- page=, timestamp=, section=
+- text TEXT
+- embedding_json TEXT
+- created_at TEXT
+
+connectors:
+- id TEXT PRIMARY KEY
+- workspace_id TEXT
+- type TEXT          -- local_folder|webhook_export|s3_drop
+- name TEXT
+- status TEXT        -- connected|disconnected|error
+- scope_json TEXT    -- folders/prefixes
+- schedule_json TEXT -- daily snapshot time
+- last_run TEXT NULL
+- created_at TEXT
+
+connector_runs:
+- id TEXT PRIMARY KEY
+- connector_id TEXT
+- started_at TEXT
+- finished_at TEXT
+- status TEXT
+- items_ingested INTEGER
+- error TEXT NULL
+
+reports:
+- id TEXT PRIMARY KEY
+- workspace_id TEXT
+- type TEXT          -- individual|weekly_summary|monthly_gaps|custom
+- title TEXT
+- schedule_json TEXT NULL
+- last_run TEXT NULL
+- output_artifact_id TEXT NULL
+- created_at TEXT
+
+audit_log:
+- id TEXT PRIMARY KEY
+- workspace_id TEXT
+- action TEXT        -- upload|chat|report_run|connector_run|settings_change
+- created_at TEXT
+
+FEATURES TO IMPLEMENT
+
+A) Two Modes in UI
+Add workspace selector:
+- Personal (individual files)
+- Organisation (shared workspace, Premium only)
+
+B) Upload + Internal RAG (MANDATORY)
+- Upload files → extract text/OCR/transcript
+- Chunk and embed
+- Store chunks linked to asset
+- Chat retrieval uses ONLY internal chunks
+
+Chat rules:
+- If no relevant chunks found → return:
+  “The requested information was not found in the provided files.”
+- Always include citations when answering.
+
+C) Enterprise Offline Ingestion (Daily)
+Implement connectors (read-only):
+
+1) Webhook Export Connector
+- POST /api/connectors/:id/webhook
+- Accept internal exports (PDF/CSV/etc)
+- Each upload ingested as internal asset
+
+2) Local Folder Connector (MVP-friendly)
+- Config: local server folder path
+- Daily snapshot scan (hash/mtime)
+- Ingest new/changed files
+
+(Optional later: S3 Drop Connector)
+
+D) Scheduler
+- Run every N minutes (Replit-safe)
+- Execute:
+  - Daily connector snapshot runs
+  - Weekly/monthly reports
+
+E) Reports (Internal Only)
+Reports must be generated from internal data only:
+- Individual:
+  - Study summary
+  - Contract obligations
+  - Notes consolidation
+- Enterprise:
+  - Weekly summary (what changed, what’s used)
+  - Monthly gaps (unanswered questions, missing files)
+Each report is stored as artifacts.kind="report_output" with citations.
+
+F) AI Readiness (Premium Org)
+Use internal signals only:
+- Assets ingested (last 30 days)
+- Connector consistency
+- Answer success rate
+- Missing-context events
+- Report activity
+Expose readiness dashboard (already specified earlier).
+
+G) Access Control
+- Admin: connectors, reports, exports, users
+- Editor: upload, chat, reports
+- Viewer: chat only
+Enforce server-side.
+
+UI REQUIREMENTS (REACT)
+- Chat UI shows:
+  “Answers are generated only from your uploaded files.”
+- Citations always shown.
+- “Not found” responses encouraged (not treated as errors).
+- Reports page
+- Connectors page (Premium only)
+- Readiness dashboard (Premium only)
+
+DELIVERABLE
+Prepare the app so:
+- Individuals can learn and prepare reports from offline files
+- Enterprises can ingest internal data daily (read-only)
+- AI readiness progress is measurable
+- No external data sources exist anywhere in the system
+
+TESTING
+- Ask a question not covered by files → verify “Not found”
+- Upload more files → verify answer appears with citations
+- Connector ingestion increases asset count
+- Reports use only internal data

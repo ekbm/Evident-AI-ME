@@ -1,0 +1,57 @@
+You are working inside the existing Evident codebase (React/Node/TypeScript) on Replit. The app is live on the App Store and already supports: upload documents/videos, ask questions, get answers with citations. There is also an “AI Readiness Scanner” and “AI Report” feature.
+
+TASK
+I want you to do a GAP ANALYSIS for the “Student Performance Engine (Study Mode)” plan below.
+
+Your job is to:
+1) Inspect the codebase and identify what is ALREADY implemented (fully or partially).
+2) Identify what is NOT implemented yet.
+3) For partially implemented areas, state exactly what’s missing to reach MVP.
+4) Output a checklist with:
+   - Status: ✅ Done / 🟡 Partial / ❌ Not started
+   - File paths / modules involved (exact paths)
+   - Notes on what exists today
+   - What needs to be built next
+5) Finish with a recommended “next 5 commits” plan (small, safe commits that won’t break existing upload→ask→answer).
+
+IMPORTANT RULES
+- Do not refactor unrelated code.
+- Do not change the existing Upload→Ask→Answer behavior.
+- Only analyze and report. Do NOT implement anything in this request.
+- If you cannot find something in the code, mark it ❌ Not started.
+- Be specific and grounded: cite the exact file paths, route names, DB tables, UI components, and services you found.
+
+WHAT TO LOOK FOR (MVP Study Mode spec)
+A) UI / Navigation
+- “Study Mode” nav item
+- Route: /study
+- Tabs: Dashboard, Practice, Review (flagged)
+- CTA in chat: “Turn this into practice”
+
+B) Database (Drizzle)
+- study_sets
+- study_questions (with topic/subtopic/difficulty/cognitive_level + doc/video refs)
+- study_attempts (correctness/score/confidence/time/flagging/model_confidence)
+- (optional) topic_catalog
+- Indexes for user_id + created_at, topic, set_id
+
+C) Backend API
+- POST /api/study/set  (create set + generate questions grounded to selected docs/videos)
+- POST /api/study/attempt (grade + store attempt + return remediation links)
+- GET /api/study/dashboard (readiness score + weakness + overconfidence + recommendations)
+- POST /api/study/practice-weakness (create set from weakest topics)
+
+D) Generation & Grading Logic
+- Question generation that outputs metadata fields (topic/subtopic/difficulty/cognitive_level/source refs/video refs)
+- MCQ grading exact match
+- Short answer grading with score_pct + confidence + flagging (40–70%)
+- Strict grounding to selected sources (no external insight unless explicitly enabled)
+
+E) Metrics / Scoring
+- Weakness detection by topic (min attempts + recency weighting)
+- Overconfidence alerts (high confidence + wrong)
+- Readiness score formula (Accuracy/Coverage/Weakness concentration/Time/Stability)
+- Trend over time (7/30 days)
+
+F) Video Advantage
+- Transcript timesta

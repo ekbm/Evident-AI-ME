@@ -1,0 +1,43 @@
+Guideline 3.1.1 - Business - Payments - In-App Purchase
+
+We noticed that your app includes or accesses paid digital content, services, or functionality by means other than in-app purchase, which is not appropriate for the App Store. Specifically: 
+
+- The subscriptions can be purchased in the app using payment mechanisms other than in-app purchase. 
+
+Apps on the United States storefront may link out to the default browser, using buttons, external links, or other calls to action, for payment mechanisms other than in-app purchase. To learn more, see the News post on Apple Developer. For storefronts where there are not alternative options for qualifying apps, the app must use in-app purchase.
+
+Next Steps
+
+The paid digital content, services, or subscriptions included in or accessed by your app must be available for purchase in the app using in-app purchase. 
+
+Apps that offer paid digital services and content across multiple platforms may allow customers to access the content they acquired outside the app as long as it is also available for purchase using in-app purchase. See Guideline 3.1.3(b) Multiplatform Services for more information. 
+
+If you have any additional information to provide regarding the digital content and services in your app and how the guidelines apply to them, please reply to this message in App Store Connect and let us know. If there is information you'd like us to consider in our review of future submissions, please feel free to include it in the App Review Information section of App Store Connect. 
+
+Resources
+
+- See how to implement in-app purchase with the StoreKit framework.
+- Review step-by-step instructions for creating in-app purchases in App Store Connect. 
+- Learn more about our policies for apps that offer paid digital content and services.
+
+
+Guideline 2.1 - Performance - App Completeness
+Issue Description
+
+The app exhibited one or more bugs that would negatively impact users.
+
+Specifically, the app displays an error message when we tap the Subscribe button.
+
+Review device details:
+
+- Device type: iPad Air (5th generation) and iPhone 13 mini 
+- OS version: iPadOS 26.2 and iOS 26.2
+
+Next Steps
+
+Test the app on supported devices to identify and resolve bugs and stability issues before submitting for review.
+
+If the bug cannot be reproduced, try the following:
+
+- For new apps, uninstall all previous versions of the app from a device, then install and follow the steps to reproduce.
+- For app updates, install the new version as an update to the previous version, then follow the steps to reproduce.

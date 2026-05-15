@@ -1,0 +1,199 @@
+You are working inside an existing full-stack app called “Evident”.
+
+Tech stack (assume):
+- Backend: Node.js + Express + TypeScript
+- Frontend: React + TypeScript (Vite)
+- Database: PostgreSQL (Drizzle ORM or equivalent)
+- Storage: local disk or S3-like abstraction (there is a storage service module)
+- Auth: Firebase Auth already exists
+- App already supports uploads and shows “processing” status for files
+
+GOAL
+Implement a backend-managed ingestion queue with:
+1) Job queue (BullMQ + Redis)
+2) Worker with heartbeats + step tracking (OCR/chunk/embed/index)
+3) Watchdog to detect stuck jobs and mark as STALE
+4) Admin API to list jobs, cancel, retry, and FORCE DELETE uploads
+5) Optional: Bull-board dashboard mounted behind admin auth
+6) Minimal Admin UI page in the existing React app to manage stuck uploads
+
+CRITICAL REQUIREMENTS
+- Admin endpoints must be protected (only admin users can call them).
+- Stuck job logic is based on lastHeartbeatAt; if no heartbeat for X minutes while status=processing, mark as stale and allow retry/delete.
+- FORCE DELETE must remove queue job + database artifacts + storage file safely.
+- The system must be resilient: timeouts per step, retries with backoff, dead-letter behavior.
+
+IMPLEMENTATION PLAN
+A) Add Redis + BullMQ queue
+B) Add DB fields to uploads table for job lifecycle
+C) Create worker + step functions (placeholders if OCR/embed modules already exist)
+D) Add watchdog cron runner
+E) Add Express admin routes
+F) Add React Admin page
+G) Add documentation in /docs/admin-queue.md
+
+A) BACKEND: Dependencies
+Install:
+- bullmq
+- ioredis
+- bull-board
+- node-cron (or equivalent scheduler)
+Add environment variables:
+- REDIS_URL
+- JOB_STALE_MINUTES (default 10)
+- JOB_HEARTBEAT_INTERVAL_MS (default 15000)
+- ADMIN_EMAILS (comma-separated list) OR an admin claim check
+
+B) DATABASE: uploads table updates
+Extend uploads table with these columns:
+- status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'stale'
+- step: 'start' | 'ocr' | 'chunk' | 'embed' | 'index' | 'done'
+- jobId: string nullable
+- workerId: string nullable
+- startedAt: timestamp nullable
+- updatedAt: timestamp nullable
+- lastHeartbeatAt: timestamp nullable
+- errorMessage: text nullable
+
+Add a migration and ensure existing rows default to status='completed' (or a safe default) if needed.
+
+C) QUEUE MODULE
+Create backend/src/queue/connection.ts
+- Export Redis connection and BullMQ Queue instance `ingestQueue`
+
+Create backend/src/queue/enqueueIngest.ts
+- Function enqueueIngest(uploadId: string, userId: string)
+- Adds a BullMQ job with {uploadId, userId} and returns jobId
+- Updates uploads.status='queued' and uploads.jobId
+
+D) WORKER
+Create backend/src/queue/worker.ts
+- Start a BullMQ Worker('ingest', handler)
+- handler(job):
+  - mark upload status='processing', step='start', startedAt=now, workerId, lastHeartbeatAt=now
+  - start heartbeat interval: update lastHeartbeatAt every JOB_HEARTBEAT_INTERVAL_MS
+  - run steps in order:
+    1) OCR step (timeout 15min)
+    2) chunk step (timeout 5min)
+    3) embed step (timeout 10min)
+    4) index step (timeout 5min)
+  - update step before each stage
+  - on success: status='completed', step='done', updatedAt=now
+  - on failure: status='failed', errorMessage=error string, updatedAt=now, throw to BullMQ for retry
+- Configure job options:
+  - attempts: 3
+  - backoff: exponential (e.g. 30s, 2m, 10m)
+  - removeOnComplete: keep last 1000
+  - removeOnFail: keep last 500
+
+Use helper:
+backend/src/utils/withTimeout.ts
+- wraps a promise with timeout in ms, throws TimeoutError
+
+Also add “cancellation check”:
+- Before each step, read upload.status; if status='cancelled', throw CancelledError.
+
+E) WATCHDOG (stuck detection)
+Create backend/src/queue/watchdog.ts
+- Runs every 2 minutes using node-cron or setInterval in server bootstrap
+- Query uploads where:
+  status='processing' AND lastHeartbeatAt < now - JOB_STALE_MINUTES
+- For each:
+  - update status='stale'
+  - try to remove queue job if jobId exists
+  - write errorMessage='Marked stale: no heartbeat'
+- Provide a function runWatchdogOnce() and wire it into the server boot.
+
+F) ADMIN AUTH MIDDLEWARE
+Create backend/src/middleware/adminOnly.ts
+- Verify user auth (existing middleware)
+- Then check admin:
+  Option 1: email in ADMIN_EMAILS list
+  Option 2: firebase custom claim isAdmin=true
+Use whichever fits existing auth best; default to ADMIN_EMAILS for speed.
+
+G) ADMIN API ROUTES
+Create backend/src/routes/adminQueue.ts mounted at /api/admin/queue
+Routes:
+1) GET /uploads?status=processing|queued|failed|stale|cancelled|completed&limit=100
+- Returns upload list with id, filename, size, status, step, startedAt, lastHeartbeatAt, errorMessage, jobId, workerId
+
+2) POST /uploads/:uploadId/cancel
+- Set upload.status='cancelled'
+- Attempt to remove job from queue if exists
+- Return success
+
+3) POST /uploads/:uploadId/retry
+- If upload.status in ('failed','stale','cancelled'):
+  - enqueue new ingest job
+  - set status='queued', clear errorMessage, step='start', jobId=new
+- Return new jobId
+
+4) DELETE /uploads/:uploadId?force=true
+FORCE DELETE logic (must be idempotent and safe):
+- Mark upload as cancelled first
+- Remove job if exists
+- Delete derived artifacts in DB:
+  - chunks table rows for uploadId
+  - embeddings table rows for uploadId
+  - ocr_text table rows for uploadId (if exists)
+- Delete storage file using storage service
+- Delete uploads row
+- Add audit_log entry: admin user, action, timestamp, uploadId, filename
+
+H) OPTIONAL: BULL-BOARD UI
+Mount bull-board at /admin/bull
+- Protected by adminOnly middleware
+- Provide access to ingestQueue
+- Ensure it does not expose secrets
+
+I) FRONTEND: Admin Queue Page
+Add route: /admin/queue
+- Protected UI (only show if user is admin)
+- Table view with filters:
+  - Status dropdown
+  - Search by filename
+  - “Show stuck only” toggle (status=processing and heartbeat older than JOB_STALE_MINUTES)
+- Row actions:
+  - Cancel
+  - Retry
+  - Force Delete (requires confirm modal)
+- Display:
+  - status badge, step, lastHeartbeatAt, age, errorMessage
+
+Frontend API client:
+- GET /api/admin/queue/uploads
+- POST cancel/retry
+- DELETE force delete
+
+J) INTEGRATE WITH EXISTING UPLOAD FLOW
+Wherever uploads are currently set to “processing”:
+- Change it to enqueue a job:
+  - On successful file upload save:
+    call enqueueIngest(uploadId, userId)
+    return status='queued'
+- The UI should show queued/processing states based on uploads.status and step.
+
+K) DOCS
+Create /docs/admin-queue.md describing:
+- env vars
+- how to run redis locally
+- how to run worker
+- how to verify watchdog
+- how to resolve a stuck 40MB file step-by-step
+
+IMPORTANT
+- If the project already has a queue system, integrate with it instead of duplicating.
+- Keep code clean and minimal; do not refactor unrelated things.
+- Ensure TypeScript types are correct.
+- Add basic logging for job lifecycle.
+
+DELIVERABLES
+- All new backend and frontend files created and wired
+- DB migration applied
+- Admin UI working
+- Confirm you can:
+  - see stuck jobs
+  - cancel + retry
+  - force delete an upload stuck in processing
+  - watchdog marks stale jobs automatically

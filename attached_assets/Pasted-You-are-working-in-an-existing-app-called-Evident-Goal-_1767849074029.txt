@@ -1,0 +1,184 @@
+You are working in an existing app called “Evident”.
+
+Goal:
+Add marketing + lead-capture for a One-off “AI Readiness Assessment (Audit)” WITHOUT implementing the full paid assessment workflow yet.
+We want this planned for later, but visible now so inbound enquiries can be captured.
+
+We will implement BOTH:
+(B) A “locked feature” tile on the main dashboard (always visible)
+(C) A contextual banner/CTA shown after a readiness scan when results are poor (high friction / lots of red)
+
+Tech Stack (existing):
+Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query
+Backend: Node.js + Express + TypeScript
+DB: PostgreSQL + Drizzle ORM
+
+--------------------------------------------------------------------
+UX REQUIREMENTS
+--------------------------------------------------------------------
+
+1) Option B — Dashboard Tile (always visible)
+On the main dashboard/home page:
+Add a card/tile:
+
+Title: “AI Readiness Assessment (One-off)”
+Body:
+“Get a baseline score for your organisation’s documents, plus a prioritised roadmap to become AI-ready.”
+Button (primary): “Request an assessment”
+Secondary link: “Learn what’s included”
+
+Behavior:
+- Clicking “Request an assessment” opens an in-app modal form (no external links required).
+- “Learn what’s included” opens a small dialog or routes to a simple info screen (/assessment) that is informational only.
+
+2) Option C — Contextual CTA Banner (shown when scan indicates poor readiness)
+After a readiness scan completes (single doc or folder scan), if conditions indicate low readiness, show a banner at top of the results page.
+
+Banner copy:
+“Need a one-off AI Readiness Assessment for your organisation? We can review your folders and provide a score, heatmap, and improvement plan.”
+Button: “Request an assessment”
+
+Trigger conditions (v1 deterministic rules):
+Show banner if ANY of these is true:
+- readinessScoreAvg < 55 for a folder scan
+- OR (for single doc scan) readinessScore < 50
+- OR count(status === 'MANUAL') / totalDocs >= 0.15
+- OR count(ocrRequired === true) / totalDocs >= 0.30
+
+Also ensure:
+- Banner can be dismissed (X button), and dismissal persists for 7 days (localStorage).
+- If user already submitted an assessment request in last 30 days, do not show banner (backend check).
+
+3) Assessment Request Modal (shared by both B and C)
+Modal fields:
+- Full name (required)
+- Work email (required, validate)
+- Organisation (required)
+- What do you want assessed? (dropdown)
+  - “Shared drive / NAS / SMB”
+  - “Google Drive / OneDrive”
+  - “Uploaded documents”
+  - “Not sure”
+- Optional message (textarea)
+- Optional: “Include current scan context” checkbox (default ON when launched from contextual banner; OFF from dashboard tile)
+  If checked:
+   - attach: scanId, folderId/sourceId, readinessScore summary, counts (READY/NEEDS_PREP/MANUAL), top 5 issues
+
+Submission:
+- POST to backend endpoint /api/assessment-requests
+- Show success state:
+  “Request received. The Evident team will contact you.”
+- Store in UI state: lastAssessmentRequestAt (so we can suppress banners)
+
+--------------------------------------------------------------------
+BACKEND REQUIREMENTS (Express + Drizzle)
+--------------------------------------------------------------------
+
+1) DB table: assessment_requests
+Columns:
+- id (uuid)
+- createdAt (timestamp)
+- status enum('NEW','CONTACTED','CLOSED') default 'NEW'
+- fullName (text)
+- email (text)
+- organisation (text)
+- assessmentTarget enum('NAS_SMB','DRIVE','UPLOADS','NOT_SURE')
+- message (text nullable)
+- contextJson (jsonb nullable) // scan/folder summary if included
+- userId (text nullable) // if auth exists; else null
+
+2) API endpoints:
+- POST /api/assessment-requests
+  body: { fullName, email, organisation, assessmentTarget, message?, contextJson? }
+  Validation:
+   - required fields
+   - simple email format
+  Rate limit:
+   - allow at most 3 requests per email per 30 days (return 429 with helpful message)
+  Return:
+   - { ok: true, requestId }
+
+- GET /api/assessment-requests/recent
+  Returns:
+   - { hasRecent: boolean, lastAt?: timestamp }
+  Logic:
+   - if authenticated user: check by userId in last 30 days
+   - else: check by email stored in a signed cookie or by client-provided email (if available)
+  If too complex for v1:
+   - just return { hasRecent: false } and rely on localStorage suppression
+   - but keep endpoint shape for future.
+
+(Optional admin-only later)
+- GET /api/admin/assessment-requests (list)
+
+--------------------------------------------------------------------
+FRONTEND IMPLEMENTATION (React + TanStack Query + shadcn/ui)
+--------------------------------------------------------------------
+
+1) Components:
+- <AssessmentRequestModal />
+- <AssessmentAuditTile /> (dashboard tile)
+- <AssessmentCTAForm /> (internal form content)
+- <ContextualAssessmentBanner /> (shown on scan results when triggers met)
+- <AssessmentInfoDialog /> OR route /assessment
+
+2) Pages/routes:
+- Dashboard page: add tile (Option B)
+- Readiness results page(s): add contextual banner (Option C)
+- Optional: /assessment info page (simple static)
+
+3) State + suppression:
+- localStorage key: evident_assessment_banner_dismissed_until (timestamp)
+- localStorage key: evident_last_assessment_request_at (timestamp)
+- When modal submit succeeds:
+  - set evident_last_assessment_request_at = now
+  - hide banner/tile CTA “Request” button becomes “Request submitted” for that session (nice touch)
+
+4) Scan-context attachment:
+When user launches modal from contextual banner, pre-fill contextJson from the scan results already loaded:
+contextJson example:
+{
+  "source": "readiness_scan",
+  "scanId": "...",
+  "scope": "FOLDER" | "DOCUMENT",
+  "summary": {
+    "avgScore": 48,
+    "counts": {"READY": 12, "NEEDS_PREP": 41, "MANUAL": 9},
+    "ocrRequiredRate": 0.34,
+    "topIssues": [
+      {"code":"OCR_REQUIRED","count":18},
+      {"code":"LOW_TEXT_COVERAGE","count":22},
+      {"code":"COMPLEX_LAYOUT","count":11},
+      {"code":"MISSING_OWNER","count":25},
+      {"code":"HIGH_NOISE","count":13}
+    ]
+  }
+}
+
+5) UI copy (use exactly)
+Tile:
+Title: “AI Readiness Assessment (One-off)”
+Body: “Get a baseline score for your organisation’s documents, plus a prioritised roadmap to become AI-ready.”
+Button: “Request an assessment”
+Link: “Learn what’s included”
+
+Banner:
+Text: “Need a one-off AI Readiness Assessment for your organisation? We can review your folders and provide a score, heatmap, and improvement plan.”
+Button: “Request an assessment”
+
+Success:
+“Request received. The Evident team will contact you.”
+
+--------------------------------------------------------------------
+DELIVERABLES
+--------------------------------------------------------------------
+- DB migration for assessment_requests
+- Backend endpoints + validations + rate limit
+- Dashboard tile (Option B)
+- Contextual banner with triggers + dismiss logic (Option C)
+- Request modal shared by both entry points
+- Attach scan context when launched from banner
+- Ensure TypeScript types are shared where possible
+- Add basic tests for trigger logic + rate limit
+
+Now implement this end-to-end in the existing codebase.

@@ -1,0 +1,243 @@
+You are improving an existing React-based app called Evident. Evident currently displays answers as plain text in a chat/answer UI.
+
+GOAL
+Implement a “Post-Answer Action Engine” that:
+1) Detects intent for each user question + assistant answer.
+2) Computes a small set of contextual “Primary Actions” (max 5) shown under each assistant answer.
+3) Provides a “More actions” menu for secondary actions.
+4) Enforces role/workspace/policy/coverage gating so actions are safe and enterprise-friendly.
+5) Adds export actions for Proposal (DOCX) and PPT (PPTX) using a “Choose Template” modal.
+
+This is an action framework (engine + UI + endpoints). Do NOT build a full agent architecture here.
+
+TECH STACK
+Frontend:
+- React 18 + TypeScript + Vite
+- Tailwind + shadcn/ui (Button, Badge, DropdownMenu, Dialog, Tabs, Select, Input, Switch)
+- TanStack React Query
+Backend:
+- Node.js + Express + TypeScript
+- Optional DB (Postgres/Drizzle) if already present; otherwise use in-memory for MVP metadata
+File generation:
+- Proposal DOCX: Node package `docx`
+- PPTX: `pptxgenjs`
+
+TERMS
+- “Intent”: what kind of output the user likely wants (proposal, ppt, summary, policy, analysis, etc.)
+- “Action”: a next-step operation available under an answer
+- “Coverage”: how much of relevant knowledge is AI-readable (0..1). If you have an extractability metric already, use it. Otherwise simulate coverage with defaults.
+
+A) DATA MODEL (FRONTEND MESSAGE METADATA)
+Extend the assistant message model in frontend state to include:
+
+type AnswerMeta = {
+  intent: {
+    primary: "informational" | "proposal" | "presentation" | "summary" | "analysis" | "policy" | "research" | "none";
+    scores: Record<string, number>; // 0..1 per intent
+  };
+  coverage: {
+    aiReadableCoverage: number; // 0..1
+    status: "high" | "partial" | "low";
+    notes?: string; // e.g. “Some files are non-text readable”
+  };
+  gating: {
+    workspaceType: "PERSONAL" | "ORG";
+    policyStatus: "policy_active" | "policy_required" | "policy_disabled";
+    role: "OWNER" | "ADMIN" | "MEMBER";
+  };
+  suggestedActions: ActionId[];      // primary actions shown as chips/buttons
+  secondaryActions: ActionId[];      // shown under “More”
+  blockedActions: Array<{ action: ActionId; reason: string }>;
+};
+
+Where ActionId is:
+- "generate_proposal"
+- "generate_ppt"
+- "summarise"
+- "simplify"
+- "make_technical"
+- "show_sources"
+- "find_gaps"
+- "check_freshness"
+- "highlight_conflicts"
+- "export_email"
+- "save_snippet"
+- "share_link"
+- "check_compliance" (admin/org only)
+
+B) INTENT DETECTION (MVP, RULE-BASED + EXTENSIBLE)
+Implement a function detectIntent(userText: string, answerText: string): { primary, scores }.
+
+Rule-based keywords (case-insensitive):
+- proposal: "proposal", "quote", "rfp", "tender", "bid", "sow", "statement of work", "pricing"
+- presentation: "ppt", "powerpoint", "slides", "deck", "presentation", "pitch"
+- summary: "summary", "summarise", "brief", "one pager", "executive summary"
+- policy: "policy", "compliance", "governance", "legal", "security", "privacy", "terms"
+- analysis: "analyze", "analysis", "compare", "evaluate", "pros and cons", "tradeoffs"
+- research: "market", "competitors", "benchmark", "latest", "sources"
+- informational: default fallback if none match
+
+Scoring:
+- Each keyword match adds weight (e.g. 0.2); cap at 1.0
+- Primary intent = highest score; if all 0 -> informational
+Return both primary and the score map.
+
+C) COVERAGE MODEL (USE REAL IF AVAILABLE)
+If Evident already has extractability/coverage per workspace:
+- Fetch coverage from backend: GET /api/workspaces/:id/extractability (or equivalent)
+- Derive aiReadableCoverage = (text_readable + partially_readable) / total
+
+If not available:
+- Simulate coverage based on sources count:
+  - >=10 sources -> 0.8
+  - 3–9 -> 0.6
+  - <3 -> 0.3
+Set status:
+- high: >=0.7
+- partial: 0.4–0.69
+- low: <0.4
+
+D) ACTION ENGINE (CORE SPEC)
+Create computeActions(metaInputs) -> AnswerMeta.suggestedActions / secondaryActions / blockedActions.
+
+Inputs to computeActions:
+- primary intent + scores
+- coverage status (high/partial/low)
+- workspaceType, policyStatus, role
+- availability signals: hasCitations, hasSources, orgSeatLimits optional
+
+D1) Action mapping (MVP)
+Intent → default action set:
+- proposal:
+  Primary: generate_proposal, generate_ppt, show_sources, find_gaps, summarise
+  Secondary: export_email, save_snippet, check_freshness
+- presentation:
+  Primary: generate_ppt, summarise, show_sources, find_gaps
+  Secondary: generate_proposal, export_email, save_snippet
+- policy:
+  Primary: show_sources, check_compliance, check_freshness, summarise
+  Secondary: highlight_conflicts, save_snippet
+- analysis:
+  Primary: summarise, find_gaps, show_sources, highlight_conflicts
+  Secondary: check_freshness, export_email
+- research:
+  Primary: summarise, show_sources, find_gaps
+  Secondary: generate_ppt, export_email
+- informational:
+  Primary: summarise, show_sources
+  Secondary: simplify, make_technical, save_snippet, share_link
+
+D2) Primary actions limit
+Always cap primary actions to max 5, ordered by relevance:
+1) Generation actions relevant to intent
+2) Trust actions (show_sources)
+3) Improvement actions (find_gaps)
+4) Transform actions (summarise)
+
+D3) Gating rules (mandatory)
+- If workspaceType == ORG and policyStatus != policy_active:
+   Block ALL “generation” actions (generate_proposal, generate_ppt) and compliance actions.
+   Also block answer-time actions if your app blocks answering; show “Policy required” reason.
+- If role == MEMBER in ORG:
+   Block “check_compliance” and any admin-only actions.
+- If coverage.status == low:
+   Disable generation actions by default:
+    - generate_proposal, generate_ppt blocked with reason “Low coverage: improve AI-readable knowledge”
+   Still allow: show_sources, find_gaps, summarise
+- If no citations/sources available:
+   Block show_sources, check_freshness, highlight_conflicts with reason “No sources available”
+
+E) UI IMPLEMENTATION
+E1) Under each assistant message render:
+- Primary action chips/buttons (max 5)
+- “More actions” dropdown for secondary actions
+- If actions blocked, show tooltip/disabled state and reason on hover.
+
+UI components:
+- ActionChipsBar component:
+  - receives AnswerMeta
+  - renders buttons
+- MoreActionsDropdown component:
+  - shows remaining actions
+
+E2) “Choose Template” modal for generation actions
+Use shadcn/ui Dialog with Tabs: Proposal / PPT.
+Modal opens when clicking Generate Proposal or Generate PPT.
+
+Proposal settings:
+- Template: Sales Proposal | SOW | One-Page
+- Client name (optional)
+- Project name (optional)
+- Tone: Formal | Friendly
+- Length: Short | Standard | Detailed
+- Toggles: Include Pricing placeholder, Include Timeline, Include Risks/Assumptions, Include References (default ON)
+Button: Generate DOCX
+
+PPT settings:
+- Template: Executive Brief (5) | Sales Pitch (10) | Problem→Solution→Value (8)
+- Audience: Executive | Technical | Mixed
+- Toggles: Agenda, Evidence/Sources (default ON), Next Steps
+Button: Generate PPTX
+
+E3) Recent exports panel (session-only)
+After generating, show a small “Recent Exports” list (filename + download button) in the current chat session.
+
+F) BACKEND ENDPOINTS (EXPORTS + OPTIONAL ACTION SUPPORT)
+F1) Exports
+- POST /api/exports/proposal
+  Body: { questionText, answerText, citations?, settings }
+  Returns: { downloadUrl, fileName }
+
+- POST /api/exports/ppt
+  Body: { questionText, answerText, citations?, settings }
+  Returns: { downloadUrl, fileName }
+
+- GET /api/exports/download/:id
+  Streams file with correct headers.
+
+Store generated files in /uploads/exports with random ids. Keep a small in-memory registry or DB table:
+exports(id, path, mime, fileName, created_at).
+Cleanup files older than 24h on server start (setInterval).
+
+F2) Optional: action-related endpoints (if needed)
+- GET /api/workspaces/:id/action-context
+  Returns role, workspaceType, policyStatus, coverage, hasSources
+If /api/me and extractability exist already, reuse them instead.
+
+G) CITATIONS/SOURCES INTEGRATION
+If Evident already displays sources:
+- Reuse that source array and pass it into exports endpoints.
+If not, create a simple citations structure from your answer pipeline:
+- title, path/url, snippet (optional)
+
+H) TEST CASES
+Verify these flows:
+1) User asks: “Prepare a proposal for Client X”
+   -> intent proposal
+   -> show Generate Proposal + Generate PPT
+   -> modal opens -> generate DOCX/PPTX -> download works
+2) User asks: “Create a 10-slide pitch deck”
+   -> intent presentation -> Generate PPT primary
+3) ORG workspace with policy_required
+   -> generation actions disabled with reason “Policy setup required”
+4) Coverage low (simulate or real)
+   -> generation disabled with reason “Low coverage”
+   -> still show find_gaps + show_sources + summarise
+
+I) OUT OF SCOPE
+- PDF export
+- Storing exports as a managed document library
+- Advanced brand theme upload
+- Full MCP implementation (this is action UI + backend generation)
+
+DELIVERABLES
+- Intent detection implemented and attached to each assistant message
+- Action engine implemented and produces primary/secondary/blocked actions
+- Action chips + More menu under answers
+- Template modal
+- DOCX and PPTX export generation + download endpoints
+- README update: how to test exports locally in Replit
+
+Ensure it runs in Replit:
+- npm run dev (frontend)
+- npm run dev:server (backend)

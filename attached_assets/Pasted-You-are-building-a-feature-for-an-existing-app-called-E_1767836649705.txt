@@ -1,0 +1,231 @@
+You are building a feature for an existing app called “Evident”.
+Evident ingests documents from uploads and (later) folders/NAS/SMB sources, then performs extraction and RAG.
+
+Goal:
+Add an “AI-Readiness” requirement and workflow:
+- Every document must be scanned and assigned an AI-Readiness Score before extraction/RAG.
+- If a document is not AI-ready, the user gets a clear option to “Make AI-Ready” that runs a preparation pipeline.
+- After preparation, the user can proceed with extraction/RAG using the prepared version.
+
+Tech Stack (existing):
+Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query
+Backend: Node.js + Express + TypeScript
+DB: PostgreSQL + Drizzle ORM
+Storage: local disk or object storage abstraction (implement local first)
+
+Key UX:
+1) Upload/Select docs → show a “Readiness Scan” screen with progress and results
+2) For each doc show:
+   - readinessScore (0–100)
+   - status: READY / NEEDS_PREP / MANUAL
+   - issues list (human-readable)
+   - recommended actions
+3) Buttons per doc:
+   - “Proceed to Extraction” (enabled only when READY, or when user clicks “Proceed anyway” after warning)
+   - “Make AI-Ready” (enabled for NEEDS_PREP)
+   - “Manual Fix Needed” (for MANUAL; show instructions and allow re-scan)
+
+Functional Requirements:
+A) Readiness Scan
+- On upload (or doc selection), backend runs a scan:
+  - Determine file type: pdf/docx/txt/image
+  - Extractability checks:
+    - textPresent (boolean)
+    - textCoveragePercent (0–100)  // percent of pages/regions with selectable text
+    - avgCharsPerPage (number)     // rough density proxy
+    - ocrRequired (boolean)
+  - Structure checks:
+    - headingSignal (0–1)          // headings detected / section breaks found
+    - listSignal (0–1)             // bullet/number list presence
+    - tableSignal (0–1)            // tables detectable as text (not images)
+    - layoutComplexity (LOW/MED/HIGH) // based on columns, floating text boxes, etc.
+  - Quality checks:
+    - duplicationNoise (0–1)       // repeated header/footer ratio
+    - encodingHealth (0–1)         // weird glyph ratio, broken unicode
+    - languageConfidence (0–1)     // detect dominant language & confidence
+  - Metadata checks:
+    - hasTitle (boolean)
+    - hasDate (boolean)
+    - hasOwner (boolean)           // author/company/department if available
+    - versionHint (0–1)            // “v2”, “rev”, “effective” indicators
+  - Security/safety checks (best-effort, optional initially):
+    - sensitivityHint (LOW/MED/HIGH) // based on keywords (PII, payroll, medical)
+- Output a readinessScore (0–100) and a list of issues with severity and suggested fixes.
+- Store scan results in DB and return to UI.
+
+B) Make AI-Ready (Prep Pipeline)
+- Backend pipeline steps (run as a job):
+  1) If scanned PDF/image → OCR to text (use a local OCR library if available; otherwise stub with placeholder and clean architecture)
+  2) Layout reconstruction: split into sections, detect headings, lists, and tables where possible
+  3) Normalize content:
+     - remove repeated headers/footers
+     - standardize whitespace
+     - normalize dates and units where possible
+  4) Convert into a canonical “prepared” format:
+     - preparedText (markdown)
+     - preparedChunks (array of chunks with headings + page refs)
+     - extractedTables (JSON if any)
+  5) Enrich metadata: docType classification, inferred owner/department (optional), sensitivity label (optional)
+- Save prepared artifacts linked to the original document.
+- Re-run readiness scan on the prepared version and show improved score.
+- Track delta: readinessScoreBefore, readinessScoreAfter.
+
+C) Gate Extraction / RAG
+- Extraction endpoints should require:
+  - readinessStatus === READY OR userOverride === true
+- If not ready, the API returns an error payload that the UI uses to show:
+  “This document isn’t AI-ready. Run Make AI-Ready to continue.”
+
+------------------------------------------------------------------
+AI-READINESS SCORING FORMULA (weights + thresholds) — MUST IMPLEMENT
+------------------------------------------------------------------
+
+1) Compute sub-scores, each clamped to [0, 1].
+
+A. ExtractabilitySubscore (weight 0.40)
+- If ocrRequired === true:
+    extractability = 0.15  // heavily penalize; still not zero because OCR can fix
+  Else:
+    // normalize text coverage and density
+    coverage = clamp(textCoveragePercent / 100, 0, 1)
+    density = clamp(avgCharsPerPage / 1500, 0, 1)  // 1500 chars/page ~ decent density
+    extractability = 0.65*coverage + 0.35*density
+
+B. StructureSubscore (weight 0.25)
+- headings = clamp(headingSignal, 0, 1)
+- lists    = clamp(listSignal, 0, 1)
+- tables   = clamp(tableSignal, 0, 1)
+- complexityPenalty:
+    LOW  -> 1.00
+    MED  -> 0.85
+    HIGH -> 0.70
+- structureRaw = 0.50*headings + 0.20*lists + 0.30*tables
+- structure = structureRaw * complexityPenalty
+
+C. QualitySubscore (weight 0.20)
+- noisePenalty = 1 - clamp(duplicationNoise, 0, 1)     // more noise = worse
+- encoding     = clamp(encodingHealth, 0, 1)
+- language     = clamp(languageConfidence, 0, 1)
+- quality = 0.50*noisePenalty + 0.30*encoding + 0.20*language
+
+D. MetadataSubscore (weight 0.10)
+- title  = hasTitle ? 1 : 0
+- date   = hasDate ? 1 : 0
+- owner  = hasOwner ? 1 : 0
+- ver    = clamp(versionHint, 0, 1)
+- metadata = 0.35*title + 0.25*date + 0.25*owner + 0.15*ver
+
+E. Optional SensitivityAdjustment (weight 0.05) (can ship as v2, but design now)
+- sensitivityPenalty:
+    LOW  -> 1.00
+    MED  -> 0.95
+    HIGH -> 0.90
+- This does NOT lower readiness due to “difficulty”, it lowers due to “governance risk”.
+- adjustment = sensitivityPenalty
+- If not implemented yet, set adjustment = 1.0.
+
+2) Combine into final readinessScore [0..100]
+- base = 0.40*extractability + 0.25*structure + 0.20*quality + 0.10*metadata
+- readinessScore = round(100 * base * adjustment)
+
+3) Status thresholds (and gating rules)
+- READY:
+    readinessScore >= 70 AND ocrRequired === false AND encodingHealth >= 0.6
+- NEEDS_PREP:
+    40 <= readinessScore < 70 OR (ocrRequired === true) OR (layoutComplexity === HIGH)
+- MANUAL:
+    readinessScore < 40 OR encodingHealth < 0.35 OR languageConfidence < 0.35
+
+4) Auto-gate policy for extraction/RAG
+- Allow extraction automatically if READY.
+- If NEEDS_PREP:
+    show warning + “Make AI-Ready” default action
+    allow “Proceed anyway” only if user explicitly overrides
+- If MANUAL:
+    block extraction by default
+    show “Manual Fix Needed” steps + allow re-scan after user uploads a corrected version
+    (optionally allow admin-only override)
+
+5) Issue generation (must map metrics -> issues)
+Create deterministic rules to generate issues with severity:
+- If ocrRequired === true:
+    issue: “Scanned document: OCR required.” severity=HIGH action=“Make AI-Ready (OCR)”
+- If textCoveragePercent < 40:
+    issue: “Low selectable text coverage.” severity=HIGH action=“Make AI-Ready”
+- If headingSignal < 0.3:
+    issue: “Weak structure: headings not detected.” severity=MED action=“Make AI-Ready (structure)”
+- If tableSignal > 0.3 AND ocrRequired === true:
+    issue: “Tables likely embedded as images.” severity=HIGH action=“Make AI-Ready (table recovery)”
+- If duplicationNoise > 0.4:
+    issue: “High repeated header/footer noise.” severity=MED action=“Make AI-Ready (cleanup)”
+- If encodingHealth < 0.6:
+    issue: “Text encoding quality is poor (broken characters).” severity=HIGH action=“Manual fix / export again”
+- If layoutComplexity === HIGH:
+    issue: “Complex layout may reduce accuracy.” severity=MED action=“Make AI-Ready / review”
+- If !hasTitle or !hasDate or !hasOwner:
+    issue: “Missing metadata: title/date/owner.” severity=LOW action=“Add metadata”
+
+6) Score improvement expectation (used in UI copy)
+- After preparation, re-scan:
+  - If OCR performed, expect +20 to +50 points depending on structure/quality
+  - If only cleanup/structure, expect +5 to +20
+Store scoreDelta and show:
+  “Improved from X → Y (+Δ)”
+
+Implementation Notes for scoring:
+- Implement as a pure function:
+  computeReadiness(metrics) -> {score, status, subscores, issues}
+- Unit test at least 10 fixture documents (mock metrics) covering:
+  - clean PDF
+  - scanned PDF
+  - high-noise headers
+  - complex layout
+  - poor encoding
+  - missing metadata
+- Return subscores + explanations to frontend for transparency.
+
+------------------------------------------------------------------
+
+Data Model (Drizzle):
+Create tables:
+- documents: id, filename, mimeType, size, storagePath, createdAt
+- readiness_scans: id, documentId, score, status, subscores(JSON), metrics(JSON), issues(JSON), createdAt
+- prepared_documents: id, documentId, preparedPath OR preparedText, preparedMeta(JSON), createdAt
+- prep_jobs: id, documentId, status(QUEUED/RUNNING/DONE/FAILED), progress(0-100), logs(JSON), createdAt, updatedAt
+
+API Endpoints (Express):
+- POST /api/documents/upload  -> returns documents[]
+- POST /api/readiness/scan    (documentId) -> scan result
+- POST /api/prep/start        (documentId) -> job id
+- GET  /api/prep/status/:jobId -> status + progress
+- GET  /api/documents/:id     -> doc + latest scan + prepared version if exists
+- POST /api/extract           (documentId, options) -> gated by readiness
+
+Frontend Pages (Wouter routes):
+- /documents (list + upload)
+- /documents/:id/readiness (scan results + make-ready action)
+- /documents/:id/extract (only accessible if READY or override after warning)
+
+UI Components (shadcn/ui):
+- DocumentCard with badge (READY/NEEDS_PREP/MANUAL)
+- ReadinessScoreRing (0–100)
+- SubscoreBreakdown (Extractability/Structure/Quality/Metadata)
+- IssuesList (grouped by severity)
+- PrepJobProgress (polling status)
+- WarningModal for “Proceed anyway”
+
+Implementation Notes:
+- Use TanStack Query for all API calls.
+- Use a lightweight in-process job runner for prep_jobs (setInterval worker) so it works on Replit without external queue.
+- Design code so OCR and advanced parsing can be swapped later (interfaces + stubs).
+- Add clear error handling and logs for failed preparation.
+
+Deliverables:
+- Full backend implementation with routes, DB migrations, and job worker
+- Full frontend UI flows and routing
+- Scoring function + unit tests
+- Sample mock docs seeded for testing
+- Ensure TypeScript types are shared between FE/BE where possible
+- Provide instructions to run locally on Replit
+
+Now implement this feature end-to-end in the existing codebase.

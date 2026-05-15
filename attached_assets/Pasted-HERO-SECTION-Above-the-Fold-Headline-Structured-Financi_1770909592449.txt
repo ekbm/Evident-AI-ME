@@ -1,0 +1,164 @@
+HERO SECTION (Above the Fold)
+Headline:
+
+Structured Financial Intelligence — Powered by Live Data and Your Documents.
+
+Subtext:
+
+Analyze revenue trends, compare margins, evaluate financial health, and build investment theses in one integrated workspace.
+
+Supporting Line:
+
+Combine live SEC filings with your own uploaded financial reports.
+
+Primary CTA:
+
+Start Financial Analysis
+
+Secondary CTA:
+
+Explore Finance Tools
+
+Optional micro-line:
+Built for analysts, investors, and finance professionals.
+
+2️⃣ THE PROBLEM SECTION
+
+Headline:
+Financial Data Is Abundant. Structured Insight Is Not.
+
+Three pain blocks:
+
+📊 Fragmented Data Sources
+Switching between filings, spreadsheets, and news sources wastes time.
+
+📈 Manual Comparisons
+Revenue, margins, and valuation analysis require repetitive calculations.
+
+🧠 Thesis Building Takes Hours
+Turning raw numbers into structured insights is time-consuming.
+
+Closing line:
+Modern analysis requires structured synthesis — not scattered tabs.
+
+3️⃣ HOW EVIDENT WORKS
+
+Headline:
+From Raw Data to Structured Insight — In One Workspace.
+
+Step 1:
+Access live SEC filings or upload your own financial reports.
+
+Step 2:
+Generate structured financial analysis:
+• Revenue trends
+• Margin comparisons
+• Valuation metrics
+• Financial health summaries
+
+Step 3:
+Build and refine investment theses with contextual support.
+
+Insert your finance UI screenshot here (buttons like Revenue Trend, Compare Margins, etc.)
+
+Keep it sharp and clean.
+
+4️⃣ WHAT YOU CAN ANALYZE
+
+Headline:
+Financial Tools, Structured for Clarity.
+
+Feature blocks:
+
+📈 Revenue Trend Analysis
+Track growth patterns across reporting periods.
+
+📊 Margin Comparison
+Compare operating and net margins across companies.
+
+💰 Financial Health Overview
+Summarize liquidity, leverage, and performance indicators.
+
+⚖️ Valuation Comparison
+Analyze P/E ratios, multiples, and relative valuation.
+
+🧠 Investment Thesis Builder
+Generate structured argument summaries backed by data.
+
+Optional:
+₿ Crypto vs S&P Comparison
+Structured market performance insights.
+
+Short line:
+Structured outputs. Clean comparisons. Clear reasoning.
+
+5️⃣ DIFFERENTIATOR SECTION
+
+Headline:
+Not Just Market Data — Structured Context.
+
+Left column:
+Generic Finance Tools:
+
+Raw dashboards
+
+Manual spreadsheet work
+
+Static charts
+
+Scattered analysis
+
+Right column:
+Evident:
+
+Structured narrative outputs
+
+Contextual financial summaries
+
+Integrated document + live data
+
+Query-driven insights
+
+Short bold line:
+Move from numbers to structured reasoning.
+
+6️⃣ WHO IT’S FOR
+
+Headline:
+Designed For:
+
+• Retail investors
+• Financial analysts
+• Finance students
+• Portfolio managers
+• Corporate finance teams
+
+Short line:
+If your decisions depend on financial data — structure matters.
+
+7️⃣ DATA INTEGRITY & RESPONSIBILITY
+
+Headline:
+Transparent Data Usage.
+
+Copy:
+Evident integrates live financial data sources and user-provided documents to generate structured insights.
+It does not provide financial advice and should be used as a decision-support tool.
+
+This protects you legally and professionally.
+
+8️⃣ FINAL CTA SECTION
+
+Dark background.
+
+Headline:
+Analyze With Structure. Decide With Confidence.
+
+Subtext:
+Bring financial data, filings, and reports into one intelligent workspace.
+
+Primary CTA:
+Start Financial Analysis
+
+Optional secondary:
+See Finance Demo

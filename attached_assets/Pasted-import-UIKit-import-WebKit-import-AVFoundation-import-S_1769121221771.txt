@@ -1,0 +1,401 @@
+import UIKit
+import WebKit
+import AVFoundation
+import StoreKit
+
+class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+    
+    private var webView: WKWebView!
+    private var loadingView: UIView!
+    private var spinner: UIActivityIndicatorView!
+    
+    // StoreKit product IDs
+    private let productIDs: Set<String> = [
+        "com.evident.assistant.sub.core.lite.monthly",
+        "com.evident.assistant.sub.core.scholar.monthly",
+        "com.evident.assistant.sub.core.advanced.monthly",
+        "com.evident.assistant.sub.core.max.monthly",
+        "com.evident.assistant.sub.storage.5gb.monthly",
+        "com.evident.assistant.sub.storage.10gb.monthly",
+        "com.evident.assistant.sub.storage.15gb.monthly",
+        "com.evident.proplus.yearly"
+    ]
+    private var products: [Product] = []
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupLoadingView()
+        setupWebView()
+        loadWebsite()
+        loadProducts()
+    }
+    
+    // MARK: - StoreKit 2 Product Loading
+    private func loadProducts() {
+        Task {
+            await loadProductsAsync()
+        }
+    }
+    
+    private func loadProductsAsync() async {
+        for attempt in 1...3 {
+            do {
+                products = try await Product.products(for: productIDs)
+                print("[StoreKit] Attempt \(attempt): Loaded \(products.count) products: \(products.map { $0.id })")
+                
+                // If products is empty, retry (iPad sometimes needs multiple attempts)
+                if products.isEmpty && attempt < 3 {
+                    print("[StoreKit] Products array empty, retrying in 2 seconds...")
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    continue
+                }
+                
+                // Successfully loaded products
+                if !products.isEmpty {
+                    return
+                }
+            } catch {
+                print("[StoreKit] Attempt \(attempt) failed: \(error)")
+                if attempt < 3 {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                }
+            }
+        }
+        print("[StoreKit] All attempts completed. Products loaded: \(products.count)")
+    }
+    
+    // MARK: - WKScriptMessageHandler
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "subscribe", let productId = message.body as? String {
+            print("[StoreKit] Subscribe requested for: \(productId)")
+            purchaseProduct(productId: productId)
+        }
+    }
+    
+    // MARK: - StoreKit 2 Purchase
+    private func purchaseProduct(productId: String) {
+        // If products not loaded yet, try loading them first
+        if products.isEmpty {
+            print("[StoreKit] Products not loaded, loading now...")
+            Task {
+                do {
+                    products = try await Product.products(for: productIDs)
+                    print("[StoreKit] Just-in-time loaded \(products.count) products")
+                    await attemptPurchase(productId: productId)
+                } catch {
+                    print("[StoreKit] Just-in-time load failed: \(error)")
+                    DispatchQueue.main.async {
+                        self.showPurchaseError("Unable to load products. Please try again.")
+                    }
+                }
+            }
+            return
+        }
+        
+        Task {
+            await attemptPurchase(productId: productId)
+        }
+    }
+    
+    private func attemptPurchase(productId: String) async {
+        guard let product = products.first(where: { $0.id == productId }) else {
+            print("[StoreKit] Product not found: \(productId). Available: \(products.map { $0.id })")
+            DispatchQueue.main.async {
+                self.showPurchaseError("Product not available. Please try again later.")
+            }
+            return
+        }
+        
+        do {
+            let result = try await product.purchase()
+            switch result {
+            case .success(let verification):
+                switch verification {
+                case .verified(let transaction):
+                    print("[StoreKit] Purchase successful: \(transaction.productID)")
+                    await transaction.finish()
+                    await sendTransactionToServer(transaction: transaction)
+                    showPurchaseSuccess()
+                case .unverified(_, let error):
+                    print("[StoreKit] Unverified purchase: \(error)")
+                    showPurchaseError("Purchase could not be verified.")
+                }
+            case .userCancelled:
+                print("[StoreKit] User cancelled purchase")
+            case .pending:
+                print("[StoreKit] Purchase pending")
+                showPurchasePending()
+            @unknown default:
+                break
+            }
+        } catch {
+            print("[StoreKit] Purchase error: \(error)")
+            showPurchaseError("Purchase failed: \(error.localizedDescription)")
+        }
+    }
+    
+    private func sendTransactionToServer(transaction: Transaction) async {
+        // Get the JWS representation for server verification
+        guard let jwsRepresentation = transaction.jsonRepresentation.base64EncodedString().data(using: .utf8) else {
+            print("[StoreKit] Failed to get JWS representation")
+            return
+        }
+        
+        // Notify web app of successful purchase
+        DispatchQueue.main.async {
+            self.webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('iospurchase', { detail: { success: true, productId: '\(transaction.productID)' } }));", completionHandler: nil)
+        }
+    }
+    
+    private func showPurchaseSuccess() {
+        DispatchQueue.main.async {
+            let alert = UIAlertController(title: "Success!", message: "Your subscription is now active.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+                self.webView.reload()
+            })
+            self.present(alert, animated: true)
+        }
+    }
+    
+    private func showPurchaseError(_ message: String) {
+        DispatchQueue.main.async {
+            let alert = UIAlertController(title: "Purchase Error", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true)
+        }
+    }
+    
+    private func showPurchasePending() {
+        DispatchQueue.main.async {
+            let alert = UIAlertController(title: "Purchase Pending", message: "Your purchase is awaiting approval.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true)
+        }
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        webView.frame = view.bounds
+        loadingView.frame = view.bounds
+    }
+    
+    private func setupLoadingView() {
+        loadingView = UIView(frame: view.bounds)
+        loadingView.backgroundColor = UIColor(red: 248/255, green: 250/255, blue: 252/255, alpha: 1)
+        loadingView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        
+        let logoImageView = UIImageView()
+        logoImageView.image = UIImage(named: "AppIcon")
+        logoImageView.contentMode = .scaleAspectFit
+        logoImageView.translatesAutoresizingMaskIntoConstraints = false
+        loadingView.addSubview(logoImageView)
+        
+        let titleLabel = UILabel()
+        titleLabel.text = "Evident"
+        titleLabel.font = UIFont.systemFont(ofSize: 28, weight: .bold)
+        titleLabel.textColor = UIColor(red: 59/255, green: 130/255, blue: 246/255, alpha: 1)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        loadingView.addSubview(titleLabel)
+        
+        spinner = UIActivityIndicatorView(style: .medium)
+        spinner.color = UIColor(red: 100/255, green: 116/255, blue: 139/255, alpha: 1)
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        spinner.startAnimating()
+        loadingView.addSubview(spinner)
+        
+        NSLayoutConstraint.activate([
+            logoImageView.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
+            logoImageView.centerYAnchor.constraint(equalTo: loadingView.centerYAnchor, constant: -60),
+            logoImageView.widthAnchor.constraint(equalToConstant: 80),
+            logoImageView.heightAnchor.constraint(equalToConstant: 80),
+            
+            titleLabel.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
+            titleLabel.topAnchor.constraint(equalTo: logoImageView.bottomAnchor, constant: 16),
+            
+            spinner.centerXAnchor.constraint(equalTo: loadingView.centerXAnchor),
+            spinner.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 24)
+        ])
+        
+        view.addSubview(loadingView)
+    }
+    
+    private func setupWebView() {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+        
+        // Register message handlers for JavaScript communication
+        let contentController = WKUserContentController()
+        contentController.add(self, name: "subscribe")
+        
+        // Inject iOS app detection flag BEFORE page loads (critical for iPad)
+        let earlyInjectionScript = WKUserScript(
+            source: "window.__EVIDENT_IOS_APP__ = true;",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        contentController.addUserScript(earlyInjectionScript)
+        
+        config.userContentController = contentController
+        
+        let preferences = WKWebpagePreferences()
+        preferences.allowsContentJavaScript = true
+        config.defaultWebpagePreferences = preferences
+        
+        webView = WKWebView(frame: view.bounds, configuration: config)
+        webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        webView.navigationDelegate = self
+        webView.uiDelegate = self
+        webView.backgroundColor = UIColor(red: 248/255, green: 250/255, blue: 252/255, alpha: 1)
+        webView.isOpaque = false
+        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+        
+        if #available(iOS 16.4, *) {
+            
+        }
+        
+        view.insertSubview(webView, belowSubview: loadingView)
+    }
+    
+    private func loadWebsite() {
+        // Add ios=1 parameter for reliable iOS app detection (WKUserScript timing can be unreliable on iPad)
+        guard let url = URL(string: "https://evident-ai.net/?ios=1") else { return }
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+        webView.load(request)
+    }
+    
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        injectViewportMeta()
+        UIView.animate(withDuration: 0.3) {
+            self.loadingView.alpha = 0
+        } completion: { _ in
+            self.loadingView.isHidden = true
+        }
+    }
+    
+    private func injectViewportMeta() {
+        let script = """
+        (function() {
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (!meta) {
+                meta = document.createElement('meta');
+                meta.name = 'viewport';
+                document.head.appendChild(meta);
+            }
+            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+            
+            // Set global flag for iOS app detection (more reliable than checking messageHandlers)
+            window.__EVIDENT_IOS_APP__ = true;
+        })();
+        """
+        webView.evaluateJavaScript(script, completionHandler: nil)
+    }
+    
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        showError(error)
+    }
+    
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        showError(error)
+    }
+    
+    private func showError(_ error: Error) {
+        let alert = UIAlertController(
+            title: "Connection Error",
+            message: "Unable to load Evident. Please check your internet connection and try again.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Retry", style: .default) { _ in
+            self.loadWebsite()
+        })
+        present(alert, animated: true)
+    }
+    
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if navigationAction.targetFrame == nil {
+            webView.load(navigationAction.request)
+        }
+        return nil
+    }
+    
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        guard let url = navigationAction.request.url else {
+            decisionHandler(.allow)
+            return
+        }
+        
+        print("[WebView] Navigation request: \(url.absoluteString)")
+        
+        // Handle special schemes (tel:, mailto:, etc.)
+        if let scheme = url.scheme, !["http", "https", "about", "blob", "data"].contains(scheme.lowercased()) {
+            if UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            }
+            decisionHandler(.cancel)
+            return
+        }
+        
+        // Allow all web navigation within the WebView - don't open external Safari
+        // This prevents crashes with SafariViewService on iPad
+        decisionHandler(.allow)
+    }
+    
+    func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
+        switch type {
+        case .camera:
+            requestCameraPermission { granted in
+                decisionHandler(granted ? .grant : .deny)
+            }
+        case .microphone:
+            requestMicrophonePermission { granted in
+                decisionHandler(granted ? .grant : .deny)
+            }
+        case .cameraAndMicrophone:
+            requestCameraPermission { cameraGranted in
+                if cameraGranted {
+                    self.requestMicrophonePermission { micGranted in
+                        decisionHandler(micGranted ? .grant : .deny)
+                    }
+                } else {
+                    decisionHandler(.deny)
+                }
+            }
+        @unknown default:
+            decisionHandler(.prompt)
+        }
+    }
+    
+    private func requestCameraPermission(completion: @escaping (Bool) -> Void) {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            completion(true)
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    completion(granted)
+                }
+            }
+        default:
+            completion(false)
+        }
+    }
+    
+    private func requestMicrophonePermission(completion: @escaping (Bool) -> Void) {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            completion(true)
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .audio) { granted in
+                DispatchQueue.main.async {
+                    completion(granted)
+                }
+            }
+        default:
+            completion(false)
+        }
+    }
+    
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .darkContent
+    }
+}

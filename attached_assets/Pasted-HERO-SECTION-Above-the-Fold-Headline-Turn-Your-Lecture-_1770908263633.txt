@@ -1,0 +1,156 @@
+HERO SECTION (Above the Fold)
+Headline:
+
+Turn Your Lecture Slides Into Real Exam Simulations.
+
+Subtext:
+
+Generate structured practice exams, model answers, and deep explanations — built strictly from your own study material.
+
+Supporting Line (small text):
+
+No internet guessing. No generic AI answers. Just your documents.
+
+Primary CTA:
+
+Start Exam Prep
+
+Secondary CTA:
+
+See How It Works
+
+Optional micro-line under CTA:
+🎓 90-Day Student Access (Limited Launch)
+
+2️⃣ THE PROBLEM SECTION
+
+Headline:
+Studying Isn’t the Problem. Structure Is.
+
+Three pain blocks:
+
+📄 200-page lecture slides
+You’re overwhelmed by information.
+
+🔎 Searching for key concepts
+You waste time scanning PDFs.
+
+❓ Unsure what exams will look like
+You don’t know how questions will be structured.
+
+Short closing line:
+Exams test structure. Not just knowledge.
+
+3️⃣ HOW EVIDENT WORKS (Simple 3-Step Flow)
+
+Headline:
+From Slides to Simulation — In Minutes.
+
+Step 1:
+Upload your lecture slides or notes.
+
+Step 2:
+Generate a structured practice exam.
+
+Step 3:
+Answer, review, and grade instantly.
+
+Add visual screenshots here (your quiz engine images).
+
+Keep it clean. No clutter.
+
+4️⃣ WHAT YOU CAN GENERATE
+
+Headline:
+More Than Just Questions.
+
+Four feature blocks:
+
+📝 Multiple Choice Questions
+Structured and exam-style.
+
+✍️ Short & Essay Questions
+With model answers and explanations.
+
+🖨 Printable Exam Sheets
+Simulate real exam conditions.
+
+📱 QR Code Grading
+Scan and review performance instantly.
+
+Short line:
+Built strictly from your uploaded materials.
+
+5️⃣ DIFFERENTIATOR SECTION (Your Moat)
+
+Headline:
+Why This Is Different From Generic AI Tools
+
+Left column:
+Generic AI Tools:
+
+Pull random internet information
+
+Guess answers
+
+Not built from your course material
+
+No exam structure
+
+Right column:
+Evident:
+
+Strictly document-based
+
+Structured exam output
+
+Controlled content mode
+
+Designed for academic simulation
+
+Short bold line:
+Your material. Your structure. Your preparation.
+
+6️⃣ WHO IT’S FOR
+
+Headline:
+Built for Serious Students.
+
+Bullets:
+
+• University students
+• Grad school candidates
+• Professional certification prep
+• Medical / Law / Engineering exams
+• Structured exam practice
+
+Short closing line:
+If your exam comes from lecture material — so should your preparation.
+
+7️⃣ TRUST + INTEGRITY SECTION
+
+This is very important for credibility.
+
+Headline:
+Designed for Responsible Academic Use.
+
+Copy:
+Evident generates structured exam simulations from your own uploaded material. It does not promote academic misconduct and is intended for preparation and understanding.
+
+This protects you long term.
+
+8️⃣ FINAL CTA SECTION
+
+Dark background.
+
+Headline:
+Stop Searching. Start Simulating.
+
+Subtext:
+Prepare with structure. Practice with confidence.
+
+Primary CTA:
+Start Your 90-Day Student Access
+
+Optional secondary CTA:
+Watch Demo

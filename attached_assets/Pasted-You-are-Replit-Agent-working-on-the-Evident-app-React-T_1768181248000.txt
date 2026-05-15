@@ -1,0 +1,203 @@
+You are Replit Agent working on the Evident app (React + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query; Node/Express/TS + Postgres + Drizzle). We already have (or are building) Finance (invoice reconciliation) and Legal (contract analysis). We want to add “Intelligence Packs” as a clean, non-bloated packaging layer.
+
+Goal
+Add an “Intelligence Packs” system:
+- A dedicated page that lists packs (Finance, Legal enabled; others Coming Soon)
+- Entitlements + feature flags so only enabled packs show in navigation and pages
+- Each pack card links to the appropriate page/route (Finance -> /finance, Legal -> /legal/contracts)
+- Coming Soon packs link to a “Learn more” modal or /coming-soon page (no dead links)
+
+Hard requirements
+- Do NOT bloat the app: pages/routes/nav must be gated by pack status.
+- Packs must be defined in one canonical config file and reused everywhere (server + client).
+- Enabled packs: Finance + Legal only.
+- Coming Soon packs: HR, Procurement, Construction/Project Docs, Compliance/Audit.
+- Add a “Settings → Intelligence Packs” page and also a top-level “Packs” page accessible from sidebar.
+- Ensure App Store-safe copy (no “guarantees”, no legal advice, no payments).
+
+Deliverables
+1) Shared pack definitions + types
+2) Server entitlements endpoint (returns which packs enabled for user/org)
+3) Client pack store/hook + route guards
+4) Navigation gating
+5) Packs pages + links
+6) “Coming Soon” modal/page
+7) Tests (basic)
+
+========================================================
+A) PACK DEFINITIONS (single source of truth)
+========================================================
+Create `shared/packs.ts`:
+
+- Types:
+  - `PackId = "finance" | "legal" | "hr" | "procurement" | "construction" | "compliance"`
+  - `PackStatus = "enabled" | "available" | "coming_soon" | "disabled"`
+  - `PackDefinition`:
+      id, title, shortDescription, longDescription, statusDefault,
+      routes: { primaryPath: string, learnMorePath?: string },
+      tags: string[],
+      icon: string (lucide icon name),
+      docsLink?: string (internal route only)
+
+- Define all packs:
+  1) Finance Intelligence Pack
+     id: finance
+     statusDefault: enabled (for now)
+     primaryPath: /finance
+  2) Legal Intelligence Pack
+     id: legal
+     statusDefault: enabled (for now)
+     primaryPath: /legal/contracts
+  3) HR Intelligence Pack
+     id: hr
+     statusDefault: coming_soon
+     learnMorePath: /packs/hr
+  4) Procurement Intelligence Pack
+     id: procurement
+     statusDefault: coming_soon
+  5) Construction / Project Docs Pack
+     id: construction
+     statusDefault: coming_soon
+  6) Compliance & Audit Pack
+     id: compliance
+     statusDefault: coming_soon
+
+- Export `PACKS: PackDefinition[]` and helper fns:
+  - `getPack(id)`
+  - `enabledByDefault(id)` (based on statusDefault)
+
+Important: This file must contain only internal links (routes), no external URLs.
+
+========================================================
+B) ENTITLEMENTS + FEATURE FLAGS (SERVER)
+========================================================
+Add DB support (minimal):
+- Table `org_entitlements`:
+  - org_id text pk
+  - packs_json jsonb  (e.g., { finance:true, legal:true, hr:false, ... })
+  - updated_at
+
+If orgs don’t exist yet, create a minimal `orgs` table or use a single default org for MVP.
+
+Server config:
+- Support environment override:
+  - `DEFAULT_ENABLED_PACKS=finance,legal`
+- On first org creation (or migration), seed entitlements based on env.
+
+API endpoint:
+- GET `/api/entitlements`
+  returns:
+    {
+      orgId: "...",
+      packs: {
+        finance: true,
+        legal: true,
+        hr: false,
+        procurement: false,
+        construction: false,
+        compliance: false
+      }
+    }
+
+Security:
+- Require auth
+- Scope by org
+
+Route guard helpers (server):
+- `requirePack("finance")` middleware for finance routes
+- `requirePack("legal")` middleware for legal routes
+- When pack disabled, return 403 with friendly message.
+
+========================================================
+C) CLIENT: PACK STORE + ROUTE GUARDS
+========================================================
+Create `client/src/features/packs/useEntitlements.ts` using TanStack Query:
+- Fetch `/api/entitlements`
+- Cache + expose `isPackEnabled(packId)`.
+
+Create `client/src/features/packs/PackGate.tsx`:
+- Props: `packId`, `children`
+- If loading: skeleton
+- If disabled: show “This feature isn’t enabled for your workspace” with link to `/settings/packs`
+- Else: render children
+
+Create route wrappers:
+- Finance routes wrapped with `<PackGate packId="finance">`
+- Legal routes wrapped with `<PackGate packId="legal">`
+
+========================================================
+D) NAVIGATION GATING
+========================================================
+Update sidebar/nav builder:
+- Add “Packs” nav item (always visible): `/packs`
+- Add “Finance” nav item ONLY if finance enabled
+- Add “Legal” nav item ONLY if legal enabled
+
+Also add a “Beta” badge on enabled packs where appropriate.
+
+========================================================
+E) PAGES + LINKING
+========================================================
+1) Packs Landing Page
+- Route: `/packs`
+- UI: grid of cards (shadcn Card)
+- For each pack, show:
+  - icon, title, shortDescription, tags, status pill
+  - Primary CTA:
+    - if enabled: “Open” -> navigate to pack.primaryPath
+    - if coming soon: “Learn more” -> open modal or route to `/packs/:id` page
+- No dead links.
+
+2) Pack Detail Pages (for Coming Soon)
+- Route: `/packs/:id`
+- Show longDescription + “Coming soon” banner
+- Show “Join waitlist” as a non-functional placeholder button OR collect email only if already supported elsewhere (avoid adding new backend).
+- Provide “Back to Packs” link
+
+3) Settings → Intelligence Packs
+- Route: `/settings/packs`
+- Show enabled packs first
+- Show coming soon below with locked icon
+- For enabled packs: show “Enabled for your workspace”
+- For coming soon: show “Coming soon”
+- Add short App Store-safe disclaimer:
+  - Finance: “No payment processing”
+  - Legal: “Not legal advice”
+
+4) Link packs to existing pages
+- Finance pack card “Open” -> `/finance`
+- Legal pack card “Open” -> `/legal/contracts`
+- Ensure these routes exist; if legal routes are different, add aliases/redirects.
+
+========================================================
+F) COPY (keep it concise)
+========================================================
+Finance pack shortDescription:
+- “Validate invoices against POs and receipts with explainable discrepancies.”
+Legal pack shortDescription:
+- “Extract clauses, risks, and obligations with source-linked explanations.”
+Coming Soon copy:
+- “Planned domain intelligence built on Evident Core.”
+
+========================================================
+G) TESTS
+========================================================
+Server:
+- `/api/entitlements` returns correct packs
+- `requirePack` blocks when disabled
+
+Client:
+- `PackGate` renders children when enabled and lock screen when disabled (simple test if test setup exists)
+
+========================================================
+H) IMPLEMENTATION ORDER
+========================================================
+1) shared/packs.ts
+2) org_entitlements table + seed
+3) /api/entitlements endpoint + requirePack middleware
+4) client entitlements hook + PackGate
+5) nav gating
+6) /packs, /packs/:id, /settings/packs pages
+7) tests
+
+Now implement all changes, ensuring build passes and no existing features break.

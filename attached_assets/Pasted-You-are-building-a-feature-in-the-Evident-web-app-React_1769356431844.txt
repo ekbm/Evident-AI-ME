@@ -1,0 +1,150 @@
+You are building a feature in the Evident web app (React 18 + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query) to clearly explain “why Evident may not give an exact answer” when a question requires assumptions or formulas not present in the user’s documents.
+
+GOAL
+Add small, trust-building UX that:
+1) Explains that Evident answers only what’s supported by uploaded documents + cited sources.
+2) Shows the explanation only when needed (at the moment of friction).
+3) Provides optional user actions:
+   - “Explain why” (shows a simple modal)
+   - “Try with Standard Assumptions (Preview)” (optional toggle, clearly labeled as assumptions)
+   - “Use External Insights” (if enabled already)
+
+DO NOT add long legal disclaimers. Keep the tone friendly and confidence-building.
+
+FEATURES TO BUILD
+
+A) Inline “Grounded Answer” Notice (only when applicable)
+When the assistant response returns with status = "insufficient_support" OR "needs_assumptions", render a small info card directly under the response:
+
+Title: “Needs assumptions to solve exactly”
+Body:
+“This question requires assumptions or formulas not explicitly present in the provided material. Evident avoids guessing and answers only from supported sources.”
+
+Actions:
+[Explain why] (opens modal)
+[Try Standard Assumptions (Preview)] (runs a second pass with assumptions allowed, clearly labeled)
+If external insights are enabled:
+[Use External Insights] (runs a second pass with external retrieval)
+
+If status is normal, do not show the card.
+
+B) “Explain Why” Modal (simple, user-friendly)
+Modal title: “Why you’re seeing this”
+Content:
+- “Evident answers only from your documents and cited sources.”
+- “Some questions (especially engineering/finance) need extra assumptions (e.g., boundary conditions, material properties, safety factors).”
+- “General AI tools may guess missing details. Evident will instead ask, cite, or label assumptions.”
+
+Include a short bulleted list of what was missing, if provided by the backend:
+- Missing formula reference
+- Missing variable values
+- Missing boundary conditions
+- Ambiguous method selection
+
+Buttons:
+[Got it]
+Optional: [Show missing items] expands a small list.
+
+C) Ask Bar Tooltip (always available, tiny)
+Add an info icon near the Ask input placeholder.
+Tooltip text:
+“Evident answers only what your documents and cited sources support. If a question needs assumptions not present, Evident will flag it instead of guessing.”
+
+D) “Standard Assumptions (Preview)” Mode (optional but recommended)
+Add a toggle in Settings (or in the Ask screen as a dropdown):
+Label: “Allow standard assumptions (Preview)”
+Helper:
+“Use common engineering/analysis assumptions when documents don’t specify enough. Results will be clearly labeled as assumption-based.”
+
+When enabled AND the response status = "needs_assumptions":
+- allow the second-pass answer call with `assumption_mode: "standard_preview"`
+- display the second answer with a badge:
+“Assumption-based (Preview)”
+and list the assumptions used (returned by backend).
+
+IMPORTANT:
+- The default mode is OFF.
+- Any assumption-based answer must show:
+  1) a badge
+  2) the assumptions list
+  3) a line: “Confirm assumptions before relying on this.”
+
+E) Backend/Response Contract (mock if needed)
+Update the chat response shape to support this:
+
+type AnswerSupportStatus =
+  | "supported"
+  | "needs_assumptions"
+  | "insufficient_support";
+
+interface ChatAnswer {
+  id: string;
+  content: string;
+  citations?: { title: string; url?: string; sourceType: "document" | "web"; snippet?: string }[];
+  supportStatus: AnswerSupportStatus;
+  missingItems?: string[]; // e.g. ["Boundary condition not specified", "Material property not provided"]
+  assumptionsUsed?: string[]; // only when assumption_mode is used
+}
+
+Chat request should accept:
+- externalInsights: boolean
+- assumption_mode: "off" | "standard_preview"
+
+F) Analytics (lightweight)
+Track these events (console.log is fine if no analytics):
+- support_notice_shown
+- explain_why_opened
+- standard_assumptions_clicked
+- external_insights_clicked
+
+IMPLEMENTATION DETAILS (WEB)
+Create/modify these files:
+
+1) src/components/chat/SupportNotice.tsx
+- Props: supportStatus, missingItems, onExplain, onStandardAssumptions, onExternalInsights, externalInsightsEnabled
+- Renders the notice card only when supportStatus !== "supported"
+
+2) src/components/chat/ExplainWhyModal.tsx
+- shadcn Dialog
+- Shows friendly explanation + missing items collapsible section
+
+3) src/components/chat/AskBar.tsx
+- Add info icon + tooltip
+
+4) src/pages/ChatPage.tsx
+- Integrate SupportNotice under the latest assistant message
+- Wire buttons to trigger second-pass calls:
+   a) Standard assumptions call (assumption_mode = "standard_preview")
+   b) External insights call (externalInsights = true)
+- Render follow-up responses as new assistant messages with proper badges
+
+5) src/pages/SettingsPage.tsx (or existing settings component)
+- Add toggle “Allow standard assumptions (Preview)”
+- Persist in localStorage and user profile if exists
+
+UI REQUIREMENTS
+- Keep it minimal and friendly
+- No scary warnings
+- Use shadcn components (Card, Button, Badge, Dialog, Tooltip)
+- Mobile responsive
+- Use clear badges:
+  - “Grounded”
+  - “Needs assumptions”
+  - “Assumption-based (Preview)”
+
+EDGE CASES
+- If missingItems is empty, show a generic line:
+“Some required details are not present in your sources.”
+- If external insights is disabled, hide that action.
+- If user clicks standard assumptions but toggle is OFF, show a small confirm dialog:
+“Enable Standard Assumptions (Preview) for this answer?” with [Enable & Try] / [Cancel]
+
+DELIVERABLE
+Provide:
+- All code changes
+- Any new components
+- Ensure TypeScript types compile
+- Add minimal styling with Tailwind classes
+- Do not break existing chat flow
+
+Start implementing now with clean, production-ready code.

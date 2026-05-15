@@ -1,0 +1,486 @@
+Build a new Evident feature called “Prepared Document Version” that scans an uploaded document, identifies AI-readiness issues, asks the user for permission to prepare an improved version, stores that improved version alongside the original in the same project/knowledge space, and allows the user to compare AI-readiness scores and Q&A results between the original and prepared versions.
+
+GOAL
+Create a workflow where:
+1. User uploads a document
+2. Evident scans the document and detects AI-readiness issues
+3. Evident shows the issues in a clean “Document Health Check” panel
+4. Evident asks the user whether they want to create a prepared version
+5. If the user accepts, Evident generates a new prepared version of the document
+6. The original file remains untouched
+7. The prepared version is stored in the same document location / same project / same knowledge space as the original
+8. The prepared copy is saved with timestamp, user info, and change log
+9. Both original and prepared versions show AI-readiness percentages
+10. The user can ask questions against either version and compare answer quality
+
+PRODUCT INTENT
+This is NOT a silent auto-edit feature.
+This is a guided document-improvement assistant.
+Users must always stay in control.
+The system should never overwrite the original document.
+The system should clearly show that the prepared version is a separate copy linked to the original.
+
+FEATURE LABEL
+Use this label consistently in the UI:
+“Prepared Document Version”
+
+CORE USER FLOW
+
+STEP 1 — Upload + scan
+After a document upload completes, automatically run a document scan and display a “Document Health Check” card.
+
+Display:
+- Overall status: Good / Moderate / Needs Improvement
+- Issues Found count
+- AI Readiness score for original document
+- Breakdown by metric
+- List of detected issues
+- Recommended actions
+
+For initial MVP, support these issue types:
+1. Repeated header/footer noise
+2. Missing metadata: date not found
+3. Author not found
+4. Owner not assigned
+5. Weak structure / missing section hierarchy
+
+Each issue should include:
+- severity: HIGH / MEDIUM / LOW
+- title
+- short explanation
+- action label
+
+Example issue cards:
+- High repeated header/footer noise
+  Explanation: Repeated page headers and footers may reduce AI retrieval quality.
+  Action: Prepare document
+
+- Missing metadata: date not found
+  Explanation: Documents without dates are harder for AI to organize and rank.
+  Action: Add metadata
+
+- Author not found
+  Explanation: Author information helps traceability and governance.
+  Action: Optional: assign author
+
+- Owner not assigned
+  Explanation: Owner assignment supports governance and document maintenance.
+  Action: Assign owner
+
+- Weak structure detected
+  Explanation: Missing headings or poor section separation may reduce AI understanding.
+  Action: Improve structure
+
+STEP 2 — Show AI readiness for original document
+Add a clear readiness card for the uploaded original document.
+
+Example:
+Original Document
+AI Readiness: 42%
+Status: Needs Improvement
+
+Health Breakdown
+- Coverage: 20 / 30
+- Structure: 4 / 20
+- Retrieval Quality: 10 / 20
+- Freshness: 3 / 15
+- Adoption: 5 / 15
+
+Add helper text:
+“This score reflects how well this document can be processed and retrieved by AI systems. It is not a guarantee of factual correctness.”
+
+STEP 3 — Ask for permission
+Below the scan results, show a permission section with buttons:
+
+Primary button:
+- Create Prepared Document Version
+
+Secondary buttons:
+- Review suggested changes
+- Skip for now
+
+Add helper text:
+“This will create a separate prepared version to improve structure and AI retrieval quality. Your original file will not be changed.”
+
+STEP 4 — Review suggested changes
+If the user clicks “Review suggested changes”, show a modal or side panel with a list of changes that will be applied.
+
+For MVP, show changes such as:
+- Remove repeated headers/footers
+- Improve section separation
+- Add extracted metadata fields where detected
+- Add Evident preparation metadata
+- Improve chunking structure for AI retrieval
+
+Allow the user to confirm:
+- Apply all changes
+- Cancel
+
+STEP 5 — Create prepared version
+When confirmed, create a separate prepared document record linked to the original document.
+
+IMPORTANT:
+- Do NOT overwrite the original file
+- Store the prepared version in the same project / same knowledge space / same document list as the original
+- Keep a parent-child relationship between them
+
+Visual relationship example:
+Original Document
+└── Prepared Document Version
+
+The prepared version should:
+- have its own ID
+- be linked to original_document_id
+- include created_at timestamp
+- include prepared_by_user_id
+- include preparation_status
+- include change_log array
+- include version_label
+- include flag is_prepared_version = true
+- include ai_readiness_score
+- include preferred_for_retrieval boolean
+
+Naming examples:
+- contract_v1_prepared.pdf
+- lecture_notes_prepared
+- policy_manual_prepared
+
+If true PDF rewriting/export is difficult in MVP, it is acceptable to:
+- save a processed text/JSON representation for AI retrieval
+- create a visible prepared document record in the UI
+- attach a “prepared content summary” and “change log”
+- keep architecture ready for future export to PDF/DOCX
+
+Even if file rewriting is limited in MVP, the user experience must clearly show:
+- Original document
+- Prepared version
+- Changes applied
+- Prepared timestamp
+- Prepared by user
+
+STEP 6 — Prepared version AI readiness score
+Once the prepared version is created, calculate and display a separate AI-readiness score for it.
+
+Example:
+Prepared Document Version
+AI Readiness: 78%
+Status: Improved
+
+For MVP, preparation should generally improve:
+- Structure
+- Retrieval Quality
+- sometimes Metadata-related quality signals
+
+Do NOT guarantee unrealistic improvement.
+Do NOT hardcode every result to very high values.
+Use a realistic score delta based on detected issues and applied changes.
+
+Add a comparison card:
+
+AI Readiness Comparison
+- Original Version: 42%
+- Prepared Version: 78%
+- Improvement: +36%
+
+Also show metric comparison where possible:
+- Coverage
+- Structure
+- Retrieval Quality
+- Freshness
+- Adoption
+
+For MVP, freshness and adoption may remain unchanged if appropriate.
+
+STEP 7 — Change log and audit trail
+Add a “Preparation Details” section for the prepared version.
+
+Show:
+- Prepared on: [timestamp]
+- Prepared by: [user]
+- Source document: [original doc name]
+- Storage location: same project / same knowledge space
+- Changes applied:
+  - Repeated header/footer noise removed
+  - Metadata added where available
+  - Section structure improved
+  - Content normalized for better AI retrieval
+
+Keep this as structured backend data.
+
+STEP 8 — Document list behaviour
+In the document list / knowledge space, show both versions together.
+
+Example:
+- Contract_Agreement.pdf [Original]
+- Contract_Agreement_prepared.pdf [Prepared] [Recommended]
+
+The prepared version must:
+- appear in the same location as the original
+- be visually linked to the original
+- show AI readiness %
+- show Prepared badge
+- show timestamp
+
+If a prepared version exists, the UI should make this obvious but not confusing.
+
+STEP 9 — Question answering behaviour
+When the user asks questions later, the system should check whether a prepared version exists.
+
+If a prepared version exists, show a small prompt/banner:
+
+“A prepared version of this document is available and may improve retrieval quality.”
+
+Buttons:
+- Use prepared version
+- Use original
+- Always prefer prepared version for this document
+
+Add a version selector above the question input:
+
+Ask Question From:
+( ) Original Document
+( ) Prepared Document Version (recommended)
+
+If the prepared version is selected, use that version for retrieval and clearly indicate:
+“Answer generated from Prepared Document Version”
+
+If original is selected, show:
+“Answer generated from Original Document”
+
+STEP 10 — Compare answers from both versions
+Add an optional comparison mode so the user can test the same question against both document versions.
+
+Button:
+- Compare answers from both versions
+
+When clicked:
+- run the same question against Original Document
+- run the same question against Prepared Document Version
+- render both answers side by side or stacked
+- clearly label each answer source
+
+Example output:
+Original Document Answer
+[answer block]
+
+Prepared Document Version Answer
+[answer block]
+
+Comparison note:
+“The prepared version retrieved cleaner structure and may provide clearer grounded responses.”
+
+This comparison feature is important because the user wants to test whether preparation improves answer quality.
+
+STEP 11 — Answer transparency
+All answers must clearly indicate:
+- which document version was used
+- whether prepared version was recommended
+- whether a better prepared version exists
+
+Never hide this.
+
+UI REQUIREMENTS
+Design this feature in a clean modern Evident style.
+Keep it simple, structured, and professional.
+Use cards, chips, subtle status indicators, and clear spacing.
+Avoid clutter.
+
+Suggested layout:
+1. Upload area
+2. Original document health check
+3. Issues list
+4. Permission / action section
+5. Prepared version creation area
+6. AI-readiness comparison card
+7. Document version selector
+8. Ask questions area
+9. Answer card below
+10. Optional compare-both-versions panel
+
+STATUS / BADGES
+Use clear chips:
+Severity:
+- HIGH
+- MEDIUM
+- LOW
+
+Version:
+- Original
+- Prepared
+- Recommended
+
+Status:
+- Good
+- Moderate
+- Needs Improvement
+- Improved
+
+BACKEND / DATA MODEL
+Add or extend models for prepared document versions.
+
+Suggested schema fields:
+documents table / model:
+- id
+- document_name
+- storage_path
+- project_id
+- knowledge_space_id
+- uploaded_by_user_id
+- created_at
+- updated_at
+- is_prepared_version
+- original_document_id
+- version_label
+- ai_readiness_score
+- preferred_for_retrieval
+- preparation_status
+- prepared_by_user_id
+- prepared_at
+- prepared_content
+- change_log (JSON)
+
+document_scan_issues table / model:
+- id
+- document_id
+- issue_type
+- severity
+- title
+- explanation
+- suggested_action
+- detected_at
+
+ai_readiness_breakdown table / model or JSON:
+- document_id
+- coverage_score
+- structure_score
+- retrieval_quality_score
+- freshness_score
+- adoption_score
+- total_score
+- calculated_at
+
+MVP SCAN LOGIC
+Implement simple deterministic heuristics first.
+Do not overcomplicate.
+
+Examples:
+- Repeated header/footer noise:
+  detect repeated lines across multiple pages or chunks
+
+- Missing metadata:
+  no date patterns found in content or metadata fields
+
+- Author not found:
+  no author in file metadata and no “Author:” style content markers
+
+- Owner not assigned:
+  intake owner field is empty
+
+- Weak structure:
+  very long continuous text blocks, low heading detection, inconsistent section markers
+
+PREPARATION LOGIC FOR MVP
+Implement practical first-pass transforms:
+- Remove repeated top/bottom lines from each page/chunk
+- Normalize spacing and line breaks
+- Detect probable headings and mark them structurally
+- Extract simple metadata patterns
+- Generate chunk-friendly cleaned content
+- Save preparation details
+
+Do NOT claim perfect accuracy.
+Do NOT claim the prepared document is more factually correct.
+Frame it as:
+“Improves structure and AI retrieval quality.”
+
+AI READINESS SCORING LOGIC
+Use the existing readiness dimensions:
+- Coverage (30)
+- Structure (20)
+- Retrieval Quality (20)
+- Freshness (15)
+- Adoption (15)
+
+Total out of 100.
+
+For MVP:
+- Original document gets a score based on current scan findings
+- Prepared version gets a recalculated score based on applied fixes
+- Only improve the dimensions that were actually affected by preparation
+- Do not inflate scores artificially
+- Show realistic changes such as:
+  - Structure improves if headings/section cleanup is applied
+  - Retrieval Quality improves if repeated noise is removed and chunking is improved
+  - Coverage usually remains unchanged
+  - Freshness usually remains unchanged
+  - Adoption remains same unless there is logic to update it
+
+Add helper copy:
+“This score estimates how well this document supports AI processing and retrieval.”
+
+COPY GUIDELINES
+Use user-friendly language.
+Avoid overly technical jargon.
+
+Examples:
+- “This document has a few issues that may reduce AI answer quality.”
+- “Create a prepared version for better structure and retrieval.”
+- “Your original file stays unchanged.”
+- “Prepared version available for improved AI retrieval.”
+- “Compare both versions to test answer quality.”
+
+EDGE CASES
+Handle:
+- user skips preparation
+- no issues found
+- prepared version already exists
+- multiple prepared versions over time
+- user selects original even when prepared exists
+- original deleted or moved
+- prepared version exists without exportable file but with processed retrieval content
+
+If no issues found, show:
+“This document looks healthy for AI use.”
+Optional button:
+- Create prepared version anyway
+
+TEST DATA
+Add mock examples so the UI can be tested quickly:
+1. Contract with repeated footer noise
+2. Lecture notes missing metadata
+3. Policy document with weak structure
+4. Report with no author/owner assigned
+
+Also add at least one mock prepared-vs-original comparison example.
+
+SUCCESS CRITERIA
+This feature is successful if:
+- user can upload and immediately see scan issues
+- user can create a prepared version with one clear action
+- original document remains unchanged
+- prepared version is visibly separate and traceable
+- prepared version is stored in the same project / same knowledge space as the original
+- both versions show AI-readiness percentages
+- Q&A flow can switch between original and prepared versions
+- compare-both-versions mode works
+- UI clearly communicates trust, control, and auditability
+
+TECH STACK
+Use the existing Evident stack and patterns.
+Keep implementation modular.
+Make it production-friendly but MVP-fast.
+Prioritize clean UX and testability.
+
+DELIVERABLE
+Build the full MVP UI and backend flow for:
+- document scan
+- AI-readiness scoring for original
+- permission prompt
+- prepared version creation
+- same-location storage/linking
+- change log display
+- AI-readiness scoring for prepared version
+- prepared/original selection for Q&A
+- compare answers from both versions
+
+If needed, use mocked processing for the first version, but structure the code so real document transformation and export can be added later.

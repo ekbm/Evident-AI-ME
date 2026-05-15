@@ -1,0 +1,236 @@
+You are a senior full-stack engineer working on Evident AI.
+
+Goal:
+Build a high-value Finance Mode feature called “Narrative vs Numbers”.
+
+Purpose:
+When a user uploads company financial documents, Evident should automatically detect important management claims in the text and verify whether those claims are supported, weakly supported, or contradicted by the financial data in the same uploaded documents.
+
+This is NOT investment advice.
+This is document intelligence grounded in source material.
+
+Product concept:
+Companies often make claims like:
+- “Revenue grew strongly”
+- “Margins improved significantly”
+- “Debt remains manageable”
+- “Demand remains strong”
+- “Cash position is healthy”
+
+Evident should:
+1. detect these claims from uploaded documents
+2. extract the relevant financial numbers from the same document set
+3. compare narrative vs numbers
+4. label the result with an evidence-based status
+5. show exact source citations
+
+Core output:
+For each detected claim, produce:
+- claim text
+- claim category
+- supporting metrics
+- verdict
+- explanation
+- citations
+
+Example verdicts:
+- Supported
+- Partially supported
+- Needs review
+- Potential contradiction
+
+Documents in scope:
+- annual reports
+- 10-K / 10-Q
+- earnings transcripts
+- investor presentations
+- management discussion sections
+- financial statements
+
+What to build:
+
+A) Claim detection pipeline
+After finance document ingestion completes, identify candidate management claims from narrative sections.
+Prioritize claim categories such as:
+1. Revenue growth
+2. Margin improvement
+3. Profitability
+4. Debt / leverage
+5. Liquidity / cash strength
+6. Demand / sales momentum
+7. Cost pressure / efficiency
+8. Outlook / guidance strength
+
+Use LLM-assisted extraction or rules + LLM validation.
+Only keep claims that are concrete enough to test against numbers.
+
+For each claim, output:
+{
+  "claimText": "",
+  "claimCategory": "",
+  "documentId": "",
+  "sourceChunkId": "",
+  "citation": ""
+}
+
+B) Financial metric extraction pipeline
+From the same uploaded document set, extract relevant metrics where available:
+- revenue
+- revenue growth
+- gross margin
+- operating margin
+- net income
+- EBITDA if present
+- cash / cash equivalents
+- debt / total debt / net debt
+- segment growth if present
+- guidance values if present
+
+Store metrics with:
+- metric name
+- value
+- period
+- source document
+- source chunk / citation
+
+Example:
+{
+  "metricName": "revenueGrowth",
+  "value": "3.2%",
+  "period": "FY2024",
+  "citation": ""
+}
+
+C) Claim-to-metric matching
+Build logic that maps a detected claim to the most relevant extracted metrics.
+
+Examples:
+- “revenue grew strongly” → revenue growth %
+- “margins improved significantly” → operating margin / gross margin trend
+- “debt remains stable” → debt vs prior period
+- “cash position is strong” → cash + liquidity ratios if available
+
+D) Verification engine
+For each claim, compare the narrative statement to the extracted metrics and generate:
+- verdict
+- confidence
+- concise explanation
+
+Example output:
+{
+  "claimText": "Margins improved significantly this year.",
+  "claimCategory": "margin_improvement",
+  "metricsUsed": [
+    {
+      "metricName": "operatingMargin",
+      "valueCurrent": "18.7%",
+      "valuePrior": "18.1%",
+      "citation": ""
+    }
+  ],
+  "verdict": "Partially supported",
+  "confidence": 0.81,
+  "explanation": "Operating margin improved, but only modestly. The word 'significantly' may overstate the magnitude of change.",
+  "citations": [
+    "...",
+    "..."
+  ]
+}
+
+E) Multi-document support
+If both transcript + annual report exist:
+- detect claim from transcript
+- verify against report/financial statements
+
+If multiple yearly reports exist:
+- compare across years where possible
+
+F) UI requirement
+Create a Finance Mode panel called:
+
+“Narrative vs Numbers”
+
+Suggested UI sections:
+1. Summary
+   - Claims detected
+   - Supported
+   - Partially supported
+   - Needs review
+   - Potential contradictions
+
+2. Claim cards
+Each card shows:
+- claim text
+- verdict badge
+- short explanation
+- metrics used
+- citations
+
+Example verdict badge labels:
+- Supported
+- Mixed
+- Review
+- Contradiction
+
+G) Guardrails
+Important:
+- Do NOT provide buy/sell recommendations
+- Do NOT rank stocks as “better investment”
+- Do NOT make legal or financial advice claims
+- Keep language evidence-based and neutral
+- Use wording such as:
+  - “supported by reported figures”
+  - “partially supported by available figures”
+  - “requires review”
+  - “potential contradiction detected”
+
+H) Storage / API
+1. Add DB storage for:
+   - detected claims
+   - extracted metrics
+   - verification results
+2. Add endpoint(s) to fetch results by workspace/document/company grouping
+3. Preserve citations and source linkage
+
+I) Workflow integration
+1. Reuse existing upload/parsing/chunking/citation pipeline
+2. Trigger this engine only for Finance Mode or finance-classified documents
+3. Run as post-ingestion background job
+4. Show processing states:
+   - “Detecting management claims…”
+   - “Extracting financial metrics…”
+   - “Verifying narrative against numbers…”
+
+J) Failure handling
+If no testable claims are found, show:
+“No verifiable management claims were detected in this document set.”
+
+If no metrics can be extracted, show:
+“Claims were detected, but supporting financial metrics could not be confidently extracted.”
+
+K) Engineering tasks
+Please:
+1. Inspect current Evident ingestion flow and reuse existing architecture
+2. Identify best place to hook this post-processing job
+3. Add backend services for claim extraction, metric extraction, and verification
+4. Add schema changes as needed
+5. Add API routes
+6. Add frontend component/panel
+7. Keep implementation modular so future features can reuse it:
+   - narrative drift
+   - risk signal detection
+   - management credibility scoring
+
+L) Final deliverable
+At the end, provide:
+1. list of files created/updated
+2. summary of backend flow
+3. summary of frontend flow
+4. assumptions / limitations
+5. next recommended step for improving accuracy
+
+Important:
+- Reuse existing Evident systems wherever possible
+- Keep code modular and production-friendly
+- Do not break current finance upload/chat behavior
+- All outputs must remain source-grounded

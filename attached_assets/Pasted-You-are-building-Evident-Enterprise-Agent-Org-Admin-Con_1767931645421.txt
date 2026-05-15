@@ -1,0 +1,180 @@
+You are building “Evident Enterprise Agent + Org Admin Console” for a product called Evident.
+
+GOAL
+Deliver a secure, enterprise-friendly folder-ingestion agent (Windows + macOS) plus an Org Admin Console (React) where organizations can see and control all agents. Also generate an “IT Pack” documentation bundle that ships with the installers.
+
+TECH STACK
+- Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui
+- Routing: Wouter (or React Router if needed)
+- Data fetching: TanStack React Query
+- Backend: Node.js + Express + TypeScript
+- DB: PostgreSQL + Drizzle ORM
+- Auth: Email login (can be stubbed) with role-based access (Org Owner/Admin/Member)
+- Agent simulator (for testing): Node script that simulates multiple devices heartbeating, indexing, syncing, errors, and command execution.
+
+IMPORTANT PRODUCT PRINCIPLES
+1) Explicit folder allowlist only (no whole disk scan).
+2) Machine-wide deployment model for orgs (conceptually Windows Service + macOS LaunchDaemon), but in this repo we implement:
+   - “Agent Core” process + configuration file based allowlist.
+   - Pairing/enrollment token.
+   - Heartbeats + command polling.
+3) No inbound ports on agent. Agent uses outbound HTTPS only (simulated).
+4) Org admins can view fleet status and issue commands. Server enforces plan seat limits.
+5) Default upload mode is “extracted text + metadata only” (simulate extraction, do not build real PDF parsing).
+6) Everything is auditable: device events + admin actions are logged.
+
+DELIVERABLES (MUST BUILD)
+A) ORG ADMIN CONSOLE (React)
+Routes:
+- /login
+- /org/agents  (Admin/Owner: all devices; Member: only their devices)
+- /org/agents/:id (details)
+- /org/policies (Admin/Owner)
+- /org/audit (Admin/Owner)
+
+/org/agents page:
+- Summary cards: total, online, offline, paused, error, stalled, seats used/limit
+- Table with filters: status, OS, owner, stale > 7 days, needs attention
+- Columns: Status badge, Device name, Owner, OS, Version, Last seen, Last sync, Folders count, Actions menu
+- Actions: View details, Pause indexing, Resume indexing, Pause uploads, Resume uploads, Rescan, Revoke device (admin only)
+- Refetch every 30 seconds (polling via React Query)
+
+Agent status logic:
+- online if now - last_seen_at < 2 * heartbeat_interval
+- offline otherwise
+- stalled if online but now - last_progress_at > STALL_THRESHOLD (e.g., 30 mins) and queue_depth > 0
+
+Agent detail page (/org/agents/:id):
+- Device info card
+- Folder allowlist list (paths can be masked; store both raw and masked)
+- Timeline of last 50 events
+- Last errors
+- Commands history + results
+
+/org/policies:
+- Editable policy JSON form with validation + friendly UI toggles:
+  - allowed_file_types []
+  - blocked_path_patterns []
+  - max_file_size_mb
+  - upload_mode: text_only | raw_allowed
+  - pii_mode: redact | block | allow
+  - heartbeat_interval_seconds
+  - command_poll_seconds
+- Policy is versioned; devices report applied_policy_version
+- Save policy writes audit log event
+
+/org/audit:
+- List of audit log events with filters: actor, action type, date range
+- Show details panel per log entry
+
+B) BACKEND (Node/Express + Postgres/Drizzle)
+Provide REST endpoints:
+
+Auth & org:
+- POST /api/auth/login (stub)
+- GET /api/me returns user + org + role + capabilities
+
+Devices:
+- GET /api/org/devices (RBAC)
+- GET /api/org/devices/:id
+- POST /api/org/devices/:id/revoke
+- POST /api/org/devices/:id/commands (enqueue command)
+- GET /api/org/devices/:id/events
+- GET /api/org/devices/:id/commands (history)
+
+Agent APIs:
+- POST /api/agent/enroll (uses org enrollment token; returns device_id + agent_token; enforces plan seat limit)
+- POST /api/agent/heartbeat (device_id + token; updates last_seen_at, state, queue_depth, last_progress_at, last_error)
+- GET  /api/agent/policy (returns org policy + version)
+- GET  /api/agent/commands/poll (returns queued commands for that device)
+- POST /api/agent/commands/result (command_id + status + output)
+- POST /api/agent/events (agent posts indexing/sync/error events)
+
+Plan seats:
+- org has plan_device_limit (e.g., Pro=1, ProPlus=3, Enterprise=unlimited or high)
+- active devices count = non-revoked devices
+- enforce on enroll; if limit exceeded return error with message and list devices to deactivate
+
+DB schema (Drizzle):
+- orgs (id, name, plan, plan_device_limit)
+- users (id, email, org_id)
+- org_members (user_id, org_id, role)
+- devices (id, org_id, owner_user_id, name, os, version, install_mode, status_override, last_seen_at, last_state, last_sync_at, last_scan_at, last_progress_at, queue_depth, last_error_code, created_at)
+- device_folders (id, device_id, path_raw, path_masked, include_subfolders, exclusions_json)
+- org_policies (org_id, version, policy_json, updated_by, updated_at)
+- device_policy_state (device_id, applied_version, applied_at)
+- device_events (id, device_id, type, message, payload_json, created_at)
+- device_commands (id, device_id, command_type, payload_json, status, created_at, executed_at, result_json)
+- audit_logs (id, org_id, actor_user_id, action, target_type, target_id, payload_json, created_at)
+
+RBAC & capabilities:
+- Owner/Admin: full access
+- Member: only their devices, cannot change policy, cannot see audit
+
+C) AGENT SIMULATOR (Node script)
+Create a script /agent-sim that can simulate 5-50 devices:
+- enroll devices using /api/agent/enroll
+- heartbeat every 60s with realistic state changes:
+  - idle -> indexing -> syncing -> idle
+  - occasional error events (permission denied, file locked)
+  - occasional stalled state (queue_depth stays > 0 but last_progress_at not updated)
+- poll commands and post results
+- attach 1-3 folders per device (store to device_folders via a server endpoint or via events)
+This is used to test the dashboard without building a real Windows Service or LaunchDaemon.
+
+D) IT PACK GENERATION (Docs bundled with installers)
+Create a /it-pack folder in repo and generate these markdown files (also provide PDF-ready markdown):
+- Enterprise_Agent_Spec.md (use the spec described below)
+- Security_Overview_1pager.md
+- Data_Flow_Diagram.md (ASCII + explanation; optionally generate a simple SVG diagram)
+- Network_Requirements.md (domains placeholder, port 443, expected polling intervals)
+- Deployment_Guide.md (Intune/Jamf steps placeholder; silent install flags placeholder)
+- EDR_Allowlist_Guide.md (expected behaviors; no inbound ports; signed binaries)
+- SECURITY-BOUNDARIES.txt (plain English “will never do” list)
+- SBOM_PLACEHOLDER.json (structure placeholder)
+
+Include a “Release Bundle” script:
+- /scripts/make-release-bundle.ts
+It should:
+- copy /it-pack into /dist/it-pack
+- copy placeholder installers into /dist (EvidentAgent.msi, EvidentAgent.pkg as dummy files)
+- generate checksums SHA256SUMS.txt for everything in /dist
+- output a folder /dist/Evident-Agent-Enterprise-<version>/
+
+SPEC CONTENT TO INCLUDE IN Enterprise_Agent_Spec.md
+Include sections:
+- Purpose & Scope
+- Install Modes: Windows Service + macOS LaunchDaemon (conceptual)
+- Folder Permission Strategy: Windows allowlist + macOS TCC + security-scoped bookmarks/PPPC
+- Statuses + Heartbeats + Command Polling
+- Data Handling: incremental ingestion, text-only default
+- Security architecture: signing, outbound-only HTTPS, token storage, encryption
+- Audit logs + Org visibility
+- Non-goals (no keystrokes, no screens, no inbound ports, no full disk scan)
+
+UI/UX REQUIREMENTS
+- Clean, Apple-like UI
+- Use shadcn/ui components
+- Use clear status badges and “Needs attention” warnings
+- Ensure the Agents list is fast and filterable
+- No tables with huge dense text; keep readable
+
+OUTPUT REQUIREMENTS
+- The project must run locally in Replit with:
+  - `npm run dev` for frontend
+  - `npm run dev:server` for backend
+  - `npm run agent:sim` to simulate devices
+- Provide seed data: 1 org, 1 owner admin, 1 member, policy version 1, plan limit 3
+- Provide a README.md with:
+  - setup instructions
+  - how to login as admin/member
+  - how to run the agent simulator
+  - how to view the IT Pack and generate release bundle
+
+DO NOT
+- Do not implement real PDF/DOCX parsing in this iteration
+- Do not implement real Windows Service or LaunchDaemon code
+- Do not implement external SSO; keep auth stubbed
+- Do not add external references; everything is self-contained
+
+Build everything end-to-end with working UI, API, database schema, and simulator.

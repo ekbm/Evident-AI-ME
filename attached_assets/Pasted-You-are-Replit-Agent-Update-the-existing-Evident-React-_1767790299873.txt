@@ -1,0 +1,151 @@
+You are Replit Agent. Update the existing “Evident” React web app to add legal/trust pages and UI placements: Privacy Policy, Terms & Conditions, AI Usage Disclaimer, and a Security & Trust page. Implement using React routing (Wouter or React Router — use whatever the repo already uses). Keep it calm, premium, and non-spammy.
+
+GOAL (WHAT TO ADD)
+1) New routes/pages:
+- /privacy
+- /terms
+- /ai-disclaimer
+- /security
+
+2) Global footer links visible across the whole app:
+- Privacy
+- Terms
+- AI Disclaimer
+- Security & Trust
+
+3) A “first upload” inline notice shown ONCE per user (localStorage):
+- Shown on the Upload screen (or immediately after successful first upload)
+- Dismissible
+- Links to /ai-disclaimer
+
+4) A subtle reminder under every AI answer:
+- “Generated from your uploaded files. Please review important decisions.” + link to /ai-disclaimer
+
+IMPORTANT STYLE RULES
+- Do NOT show blocking modals on every app launch.
+- Use progressive disclosure:
+  - footer always
+  - first upload notice once
+  - answer reminder small and consistent
+- Plain English, professional tone.
+
+IMPLEMENTATION DETAILS (REACT)
+A) Routing
+- Detect existing router:
+  - If repo uses Wouter: add <Route path="/privacy" component={PrivacyPage} /> etc.
+  - If React Router: add <Route path="/privacy" element={<PrivacyPage />} /> etc.
+- Add a “Legal” folder: src/pages/legal/
+  - PrivacyPage.tsx
+  - TermsPage.tsx
+  - AIDisclaimerPage.tsx
+  - SecurityPage.tsx
+
+B) Layout + Footer
+- If repo has a Layout component, add footer there so it appears on all pages.
+- If not, create src/components/AppLayout.tsx and wrap routes with it.
+Footer content (exact links):
+Left text: “Evident — Answers from your files, with evidence.”
+Right links:
+- Privacy -> /privacy
+- Terms -> /terms
+- AI Disclaimer -> /ai-disclaimer
+- Security & Trust -> /security
+
+C) First Upload Notice (shown once)
+- Create component: src/components/FirstUploadNotice.tsx
+- Use localStorage key: "evident_first_upload_notice_shown"
+- Logic:
+  - If key not present and user is on Upload page: show notice
+  - On dismiss: set key = "true"
+  - Also set key = "true" after first successful upload (in case user never dismisses)
+- Copy:
+Title: “About AI answers”
+Body: “Evident answers using only the files you upload. If information is missing, Evident may say ‘Not found’. Always review important decisions.”
+Link button: “Read the AI Disclaimer” -> /ai-disclaimer
+Dismiss button: “Got it”
+
+Where to show:
+- Prefer the top of Upload page, above the upload form, in a soft info card.
+
+D) Answer Reminder (always)
+- Find the component that renders answers (e.g., AnswerCard / ChatResult / ResponseView).
+- Add a small muted line at the bottom:
+“Generated from your uploaded files. Please review important decisions. AI Disclaimer”
+- “AI Disclaimer” should be a link to /ai-disclaimer.
+
+E) Page Content (paste-ready text)
+
+1) AI Usage Disclaimer (/ai-disclaimer)
+Use this exact copy (format with headings and paragraphs):
+
+AI Usage Disclaimer
+
+Evident uses artificial intelligence to help summarize, analyze, and answer questions based on the files and information you provide.
+
+Evident does not create knowledge independently and does not replace professional judgment. Responses are generated from your uploaded content and may be incomplete or incorrect if information is missing, outdated, or ambiguous.
+
+Evident may indicate when it cannot find an answer in the provided materials.
+
+Users are responsible for reviewing and verifying outputs before relying on them for decisions. Evident does not provide legal, medical, financial, or professional advice.
+
+Evident is designed to support human decision-making, not automate it.
+
+2) Privacy Policy (/privacy)
+Include:
+- What we collect: account info, uploaded files, usage logs
+- How we use it: provide features, citations, reports
+- Storage & retention: stored securely; user can delete; retention basics
+- Sharing: service providers (e.g., hosting and AI processing) only
+- User controls: delete data/account, contact
+- Effective date
+
+3) Terms & Conditions (/terms)
+Include:
+- Description of service
+- Account responsibilities
+- Acceptable use
+- Subscription plans & limits (storage/query caps)
+- Disclaimers and limitation of liability
+- Termination
+- Changes
+- Contact
+
+4) Security & Trust (/security)
+Include:
+- Evidence-first answers with citations
+- Read-only by default for connectors (when enabled)
+- Human review recommended
+- Data minimization: chunks/embeddings
+- Audit-friendly approach (Premium)
+- Security contact
+
+F) Styling
+- Use existing design system (Tailwind/shadcn if present).
+- Use a consistent “PageShell” layout:
+  - max-width container
+  - title + last updated date
+  - sections in cards
+- Make all legal pages mobile-friendly.
+
+FILES TO ADD
+- src/pages/legal/PrivacyPage.tsx
+- src/pages/legal/TermsPage.tsx
+- src/pages/legal/AIDisclaimerPage.tsx
+- src/pages/legal/SecurityPage.tsx
+- src/components/Footer.tsx (or update existing Layout)
+- src/components/FirstUploadNotice.tsx
+
+FILES TO UPDATE
+- src/App.tsx (or router file): add routes
+- Upload page component: add FirstUploadNotice and set localStorage on successful upload
+- Answer rendering component: add reminder line + link
+
+TESTING CHECKLIST (MANUAL)
+- Navigate to /privacy, /terms, /ai-disclaimer, /security
+- Footer visible on every page and links work
+- First upload notice shows once, then never again
+- After upload succeeds, notice no longer appears even after refresh
+- Answer reminder appears under every answer
+
+DELIVERABLE
+Implement all above changes end-to-end in the React app using existing routing and styling conventions in the repo.

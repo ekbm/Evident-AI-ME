@@ -1,0 +1,426 @@
+import SwiftUI
+
+// MARK: - App Entry
+
+struct EvidentAppShell: View {
+    var body: some View {
+        TabView {
+            KnowledgeTab()
+                .tabItem { Label("Knowledge", systemImage: "folder") }
+
+            AskTab()
+                .tabItem { Label("Ask", systemImage: "sparkles") }
+
+            ActivityTab()
+                .tabItem { Label("Activity", systemImage: "clock") }
+        }
+    }
+}
+
+// MARK: - Simple Models (replace with your real backend/Firebase models)
+
+struct EvidentDocument: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var subtitle: String? = nil
+    var date: Date = .now
+}
+
+struct EvidentQAItem: Identifiable, Hashable {
+    let id = UUID()
+    var question: String
+    var answerPreview: String
+    var date: Date = .now
+}
+
+// MARK: - Knowledge Tab
+
+struct KnowledgeTab: View {
+    @State private var documents: [EvidentDocument] = [
+        .init(title: "Contract_A.pdf", subtitle: "Uploaded"),
+        .init(title: "HR_Policy_2024.docx", subtitle: "Processed"),
+        .init(title: "Invoices_Q4.zip", subtitle: "Processing")
+    ]
+
+    @State private var showUploadSheet = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button {
+                        showUploadSheet = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.up.doc")
+                            Text("Upload Files")
+                            Spacer()
+                        }
+                    }
+
+                    // Optional v2 feature (keep hidden/disabled in v1)
+                    Button {
+                        // Connect sources later
+                    } label: {
+                        HStack {
+                            Image(systemName: "link")
+                            Text("Connect Sources")
+                            Spacer()
+                            Text("Soon")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .disabled(true)
+                }
+
+                Section("Recent Documents") {
+                    ForEach(documents) { doc in
+                        NavigationLink(value: doc) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(doc.title)
+                                    .font(.body)
+                                if let subtitle = doc.subtitle {
+                                    Text(subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Knowledge")
+            .navigationDestination(for: EvidentDocument.self) { doc in
+                DocumentDetailView(document: doc)
+            }
+            .sheet(isPresented: $showUploadSheet) {
+                UploadSheetView()
+            }
+        }
+    }
+}
+
+struct DocumentDetailView: View {
+    let document: EvidentDocument
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(document.title)
+                .font(.title2)
+                .bold()
+
+            Text("Status")
+                .font(.headline)
+
+            Text(document.subtitle ?? "—")
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            Text("Quick Actions")
+                .font(.headline)
+
+            // Keep this short: actions not extra screens
+            HStack {
+                ActionChip(title: "Summarise", icon: "text.quote")
+                ActionChip(title: "Key Risks", icon: "exclamationmark.triangle")
+                ActionChip(title: "Ask", icon: "sparkles")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer()
+        }
+        .padding()
+        .navigationTitle("Document")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Ask Tab (Hero Screen)
+
+struct AskTab: View {
+    @State private var questionText: String = ""
+    @State private var isAsking = false
+    @State private var lastAnswer: String? = nil
+
+    private let suggestions = [
+        "Summarise this document",
+        "Find key risks",
+        "Explain like I’m 5",
+        "Generate a report"
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+
+                    // Input Card
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Ask Evident")
+                            .font(.title2)
+                            .bold()
+
+                        TextField("Ask a question about your documents…", text: $questionText, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(1...4)
+
+                        Button {
+                            ask()
+                        } label: {
+                            HStack {
+                                if isAsking { ProgressView().scaleEffect(0.9) }
+                                Text(isAsking ? "Thinking…" : "Ask")
+                                    .bold()
+                                Spacer()
+                                Image(systemName: "arrow.up.circle.fill")
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(questionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isAsking)
+                    }
+                    .padding()
+                    .background(.thinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    // Suggestions
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Quick Suggestions")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+
+                        FlowWrap {
+                            ForEach(suggestions, id: \.self) { s in
+                                Button {
+                                    questionText = s
+                                } label: {
+                                    Text(s)
+                                        .font(.subheadline)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+
+                    // Answer
+                    if let lastAnswer {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Answer")
+                                .font(.headline)
+
+                            Text(lastAnswer)
+                                .font(.body)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            // Post-answer actions (keep v1 clean)
+                            Text("Next")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+
+                            FlowWrap {
+                                ActionChip(title: "Copy", icon: "doc.on.doc")
+                                ActionChip(title: "Export PDF", icon: "square.and.arrow.up")
+                                ActionChip(title: "Check Readiness", icon: "checkmark.seal")
+                            }
+                        }
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+
+                    Spacer(minLength: 24)
+                }
+                .padding()
+            }
+            .navigationTitle("Ask")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func ask() {
+        isAsking = true
+        let q = questionText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Replace this stub with your API call
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+            self.lastAnswer = "Here’s a clear answer based on your uploaded documents.\n\nQuestion: “\(q)”\n\n(Stubbed response — wire to your backend.)"
+            self.isAsking = false
+        }
+    }
+}
+
+// MARK: - Activity Tab
+
+struct ActivityTab: View {
+    @State private var items: [EvidentQAItem] = [
+        .init(question: "What are the key risks in the contract?", answerPreview: "Top risks include termination clauses, liability caps…", date: .now),
+        .init(question: "Summarise the HR policy", answerPreview: "This policy covers leave, conduct, performance…", date: .now.addingTimeInterval(-3600 * 5)),
+        .init(question: "Generate audit summary", answerPreview: "Audit summary: scope, findings, exceptions…", date: .now.addingTimeInterval(-3600 * 26))
+    ]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                // Simple grouping: Today / Earlier
+                Section("Today") {
+                    ForEach(items.filter { Calendar.current.isDateInToday($0.date) }) { item in
+                        NavigationLink(value: item) {
+                            ActivityRow(item: item)
+                        }
+                    }
+                    if items.filter({ Calendar.current.isDateInToday($0.date) }).isEmpty {
+                        Text("No activity today.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Earlier") {
+                    ForEach(items.filter { !Calendar.current.isDateInToday($0.date) }) { item in
+                        NavigationLink(value: item) {
+                            ActivityRow(item: item)
+                        }
+                    }
+                    if items.filter({ !Calendar.current.isDateInToday($0.date) }).isEmpty {
+                        Text("Nothing yet.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Activity")
+            .navigationDestination(for: EvidentQAItem.self) { item in
+                ActivityDetailView(item: item)
+            }
+        }
+    }
+}
+
+struct ActivityRow: View {
+    let item: EvidentQAItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(item.question)
+                .font(.body)
+                .lineLimit(2)
+
+            Text(item.answerPreview)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct ActivityDetailView: View {
+    let item: EvidentQAItem
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Question")
+                    .font(.headline)
+                Text(item.question)
+                    .font(.body)
+
+                Divider()
+
+                Text("Answer")
+                    .font(.headline)
+                Text(item.answerPreview + "\n\n(Replace with full answer content.)")
+                    .font(.body)
+
+                Divider()
+
+                Text("Actions")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+
+                FlowWrap {
+                    ActionChip(title: "Copy", icon: "doc.on.doc")
+                    ActionChip(title: "Export", icon: "square.and.arrow.up")
+                    ActionChip(title: "Follow-up", icon: "sparkles")
+                }
+
+                Spacer(minLength: 24)
+            }
+            .padding()
+        }
+        .navigationTitle("Result")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Upload Sheet (Stub)
+
+struct UploadSheetView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Upload")
+                    .font(.title2)
+                    .bold()
+
+                Text("Pick files to upload. Keep this v1 simple — no extra options.")
+                    .foregroundStyle(.secondary)
+
+                Button("Choose Files") {
+                    // Integrate UIDocumentPickerViewController / PhotosPicker
+                }
+                .buttonStyle(.borderedProminent)
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Upload")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Small UI Helpers
+
+struct ActionChip: View {
+    let title: String
+    let icon: String
+
+    var body: some View {
+        Button {
+            // hook up action
+        } label: {
+            Label(title, systemImage: icon)
+                .font(.subheadline)
+        }
+        .buttonStyle(.bordered)
+    }
+}
+
+/// A lightweight flow layout for chips (simple + stable on iOS)
+struct FlowWrap<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        // Basic wrap using LazyVGrid
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
+            content
+        }
+    }
+}
+
+// MARK: - Preview
+
+#Preview {
+    EvidentAppShell()
+}

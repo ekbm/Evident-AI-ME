@@ -1,0 +1,297 @@
+You are building “Evident Enterprise Agent + Org Admin Console” for a product called Evident.
+
+PRIMARY GOAL
+Deliver a secure, enterprise-friendly folder-ingestion agent framework (Windows + macOS) PLUS an Org Admin Console (React) where organizations can see/control all agents. ALSO: make MSI/PKG installers + IT Pack downloadable ONLY from inside the authenticated org admin area (role-gated), with signed/time-limited download links and audit logs.
+
+IMPORTANT: This repo is an MVP for testing and self-serve pilots. Do NOT build real Windows Service or macOS LaunchDaemon binaries here. Instead:
+- Build the backend + UI + DB + “agent simulator” that behaves like real agents.
+- Provide placeholder MSI/PKG files and an IT Pack bundle (docs) that ships alongside them.
+- Keep everything end-to-end working in Replit.
+
+TECH STACK (MUST USE)
+- Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui
+- Routing: Wouter (preferred)
+- Data fetching: TanStack React Query
+- Backend: Node.js + Express + TypeScript
+- DB: PostgreSQL + Drizzle ORM
+- Auth: simple email login (can be stubbed) with org roles: OWNER | ADMIN | MEMBER
+- Agent simulator: Node script that simulates multiple PCs.
+
+PRODUCT PRINCIPLES (NON-NEGOTIABLE)
+1) Explicit folder allowlist only (no whole disk scan).
+2) Machine-wide deployment is the target (Windows Service + macOS LaunchDaemon) but in this MVP we simulate the agent core.
+3) No inbound ports on the agent. Agents poll server for commands and send heartbeats (outbound only).
+4) Org admins can see fleet status, issue commands, revoke devices.
+5) Default upload mode is “extracted text + metadata only” (simulate extraction; no real PDF parsing required).
+6) Audit everything important (downloads, token generation, device enrollment, revoke, policy changes).
+
+DELIVERABLES (MUST BUILD)
+
+A) ORG ADMIN CONSOLE (REACT)
+Routes:
+- /login
+- /org/agents                (Admin/Owner: all devices; Member: only their devices)
+- /org/agents/:id             (details)
+- /org/policies               (Admin/Owner)
+- /org/audit                  (Admin/Owner)
+- /org/settings/agents         (Admin/Owner)  <-- installers + IT pack + token generation
+
+A1) /org/agents page (Fleet)
+- Summary cards: total agents, online, offline, paused, error, stalled, seats used/limit
+- Table with filters: status, OS, owner, stale > 7 days, needs attention, outdated version
+- Columns: Status badge, Device name, Owner, OS, Version, Last seen, Last sync, Folder count, Actions menu
+- Actions (Admin/Owner only): Pause indexing, Resume indexing, Pause uploads, Resume uploads, Rescan, Revoke device
+- Poll every 30 seconds with React Query
+
+Status logic:
+- online if now - last_seen_at < 2 * heartbeat_interval
+- offline otherwise
+- stalled if online AND queue_depth > 0 AND now - last_progress_at > STALL_THRESHOLD (e.g. 30 mins)
+- error if last_state == "error" OR last_error_code exists
+- paused if last_state == "paused"
+- revoked if status_override == "revoked"
+
+A2) /org/agents/:id page
+- Device info card: OS, version, install_mode, owner, last seen, last sync, last progress, policy version applied
+- Folder allowlist list (path can be masked)
+- Timeline of last 50 device events
+- Commands history and results
+- Actions panel (Admin/Owner)
+
+A3) /org/policies page (Admin/Owner)
+Editable policy UI + JSON view. Policy fields:
+- allowed_file_types []
+- blocked_path_patterns []
+- max_file_size_mb
+- upload_mode: text_only | raw_allowed
+- pii_mode: redact | block | allow
+- citations_required: boolean
+- minimum_sources: number
+- do_not_guess_from_non_extractable: boolean
+- heartbeat_interval_seconds
+- command_poll_seconds
+- freshness_max_age_days (optional)
+- external_sources_allowed: boolean (optional; future)
+Policies are versioned; devices report applied_policy_version.
+
+A4) /org/audit page
+- List audit events with filters: actor, action type, date range
+- Detail view per event (payload JSON rendered nicely)
+
+A5) /org/settings/agents page (Admin/Owner only)
+Purpose: secure downloads + enrollment controls inside org context (no public links).
+Sections:
+1) Installers & IT Pack
+- Buttons:
+  - Download Windows Agent (MSI)
+  - Download macOS Agent (PKG)
+  - Download IT & Security Pack (ZIP)
+  - Download SHA256SUMS.txt
+- Show current agent version + release notes (optional)
+- Show checksum verification text
+
+2) Enrollment
+- Generate pairing code (10 min expiry, single-use)
+- Generate org enrollment token (long-lived, rotatable)
+- Copy-to-clipboard for codes/tokens
+- Seats used vs plan limit and “Deactivate device” link
+
+3) Recent security events
+- Show last 10 related audit events (downloads/tokens/enrollments) or link to /org/audit
+
+Members visiting this route should see a message:
+“Agent downloads are restricted to administrators. Contact your org admin.”
+
+B) BACKEND (NODE/EXPRESS + POSTGRES/DRIZZLE)
+Provide REST endpoints with RBAC enforced server-side.
+
+B1) Auth & Me
+- POST /api/auth/login  (stub ok)
+- GET /api/me returns: user, org, role, capabilities
+Capabilities:
+- can_view_all_devices (OWNER/ADMIN)
+- can_manage_devices (OWNER/ADMIN)
+- can_download_agent (OWNER/ADMIN)
+- can_generate_tokens (OWNER/ADMIN)
+- can_edit_policy (OWNER/ADMIN)
+- can_view_audit (OWNER/ADMIN)
+
+B2) Devices (Org console)
+- GET /api/org/devices (RBAC: Admin/Owner all; Member only owned)
+- GET /api/org/devices/:id
+- POST /api/org/devices/:id/revoke
+- POST /api/org/devices/:id/commands (enqueue command)
+- GET /api/org/devices/:id/events
+- GET /api/org/devices/:id/commands (history)
+
+B3) Agent APIs (used by real agents later + simulator now)
+- POST /api/agent/enroll
+  Accepts either:
+   - pairing_code OR org_enrollment_token
+  Enforces plan seat limits (org.plan_device_limit).
+  Returns: device_id + agent_token
+- POST /api/agent/heartbeat
+  Updates: last_seen_at, last_state, queue_depth, last_progress_at, last_error_code, version, os, applied_policy_version
+- GET /api/agent/policy
+  Returns current org policy (latest version) + version
+- GET /api/agent/commands/poll
+  Returns queued commands for device (only not-yet-executed)
+- POST /api/agent/commands/result
+  Saves command execution result
+- POST /api/agent/events
+  Save device events (indexing/sync/error/permission issues)
+
+B4) Secure Downloads (NO public artifact URLs)
+Artifacts stored locally for MVP in /artifacts:
+- /artifacts/EvidentAgent-Windows.msi (placeholder ok)
+- /artifacts/EvidentAgent-macOS.pkg (placeholder ok)
+- /artifacts/IT-Pack.zip
+- /artifacts/SHA256SUMS.txt
+
+Implement signed/time-limited download flow:
+- POST /api/org/downloads/signed-url
+  Body: { artifact: "windows_msi" | "macos_pkg" | "it_pack" | "sha256sums" }
+  RBAC: can_download_agent
+  Returns: { url: "/api/org/downloads/<token>", expires_in_seconds: 300 }
+- GET /api/org/downloads/:token
+  Validates token expiry + org_id + user_id binding, streams file
+  Creates audit log event on success
+
+Token implementation (simple MVP):
+- download_tokens table with hashed token, org_id, user_id, artifact, expires_at, created_at, used_at(optional)
+
+B5) Enrollment tokens & pairing codes
+- POST /api/org/enrollment-token (Admin/Owner)
+  Creates/rotates org enrollment token (store hashed in DB)
+- POST /api/org/pairing-code (Admin/Owner)
+  Creates short-lived code (10 minutes, single-use)
+Store hashed values; never store raw tokens.
+Audit events for creation/rotation.
+
+B6) Audit logging (MANDATORY)
+Log these actions:
+- AGENT_INSTALLER_DOWNLOADED (artifact, version)
+- IT_PACK_DOWNLOADED
+- SHA256SUMS_DOWNLOADED
+- PAIRING_CODE_CREATED
+- ENROLLMENT_TOKEN_CREATED
+- ENROLLMENT_TOKEN_ROTATED
+- DEVICE_ENROLLED
+- DEVICE_REVOKED
+- DEVICE_COMMAND_ISSUED
+- POLICY_CREATED
+- POLICY_UPDATED
+
+C) DATABASE SCHEMA (DRIZZLE)
+Create/ensure these tables:
+
+orgs
+- id, name, plan, plan_device_limit, created_at
+
+users
+- id, email, created_at
+
+org_members
+- org_id, user_id, role (OWNER|ADMIN|MEMBER)
+
+org_policies
+- id, org_id, version, policy_json, created_by, created_at
+
+devices
+- id, org_id, owner_user_id, name, os, version, install_mode,
+  status_override (active|revoked),
+  last_seen_at, last_state, last_sync_at, last_scan_at, last_progress_at,
+  queue_depth, last_error_code,
+  applied_policy_version,
+  created_at
+
+device_folders
+- id, device_id, path_raw, path_masked, include_subfolders, exclusions_json
+
+device_events
+- id, device_id, type, message, payload_json, created_at
+
+device_commands
+- id, device_id, command_type, payload_json, status (queued|sent|succeeded|failed),
+  created_at, executed_at, result_json
+
+download_tokens
+- id, org_id, user_id, artifact, token_hash, expires_at, created_at, used_at
+
+org_enrollment_tokens
+- org_id, token_hash, rotated_at, rotated_by
+
+pairing_codes
+- id, org_id, code_hash, expires_at, used_at, created_by
+
+audit_logs
+- id, org_id, actor_user_id, action, target_type, target_id, payload_json, created_at
+
+Seat enforcement:
+- active devices count = devices where status_override != revoked
+- enforce at enroll
+
+D) AGENT SIMULATOR (NODE SCRIPT)
+Create /agent-sim with commands:
+- npm run agent:sim -- --devices 20
+
+Simulator behavior:
+- Enroll N devices via /api/agent/enroll (use enrollment token from seed)
+- Every 60s send heartbeats with state changes:
+  idle -> indexing -> syncing -> idle
+- Sometimes emit errors: permission_denied, file_locked
+- Sometimes simulate stalled: queue_depth stays > 0 but no last_progress updates
+- Poll commands every 15s and post results
+- Register 1–3 folders per device (insert into device_folders via a server endpoint or via /api/agent/events)
+
+E) IT PACK GENERATION + RELEASE BUNDLE
+Create /it-pack markdown docs (PDF-ready markdown):
+- Enterprise_Agent_Spec.md
+- Security_Overview_1pager.md
+- Data_Flow_Diagram.md (ASCII + explanation; optionally generate simple SVG)
+- Network_Requirements.md
+- Deployment_Guide.md (Intune/Jamf placeholders; silent install placeholders)
+- EDR_Allowlist_Guide.md
+- SECURITY-BOUNDARIES.txt
+- SBOM_PLACEHOLDER.json
+
+Create /scripts/make-release-bundle.ts:
+- Copies /it-pack into /dist/it-pack
+- Copies placeholders from /artifacts into /dist
+- Generates /dist/SHA256SUMS.txt for all files
+- Outputs /dist/Evident-Agent-Enterprise-<version>/
+
+F) SEED DATA (MANDATORY)
+Seed:
+- 1 org (plan_device_limit = 3)
+- 1 OWNER user, 1 ADMIN user, 1 MEMBER user
+- Policy version 1 with sensible defaults:
+  citations_required=true, pii_mode=redact, upload_mode=text_only,
+  heartbeat_interval_seconds=60, command_poll_seconds=15,
+  do_not_guess_from_non_extractable=true, minimum_sources=1
+- Create an org enrollment token in seed
+- Create a few devices (optional) or rely on simulator
+- Add dummy artifacts in /artifacts so downloads work
+
+G) RUN COMMANDS (MUST WORK IN REPLIT)
+- npm run dev         (frontend)
+- npm run dev:server  (backend)
+- npm run db:migrate
+- npm run db:seed
+- npm run agent:sim
+- npm run make:bundle (runs scripts/make-release-bundle.ts)
+
+H) OUT OF SCOPE (DO NOT BUILD NOW)
+- Real Windows Service / LaunchDaemon code
+- Real file parsing/OCR
+- External SSO
+- CDN hosting
+- Real code signing automation (document requirement only)
+
+QUALITY
+- Use shadcn/ui for UI components
+- Keep UI clean, modern, readable
+- Enforce RBAC on backend (never rely on frontend hiding)
+- Prefer simple, robust implementations over clever ones
+
+Build everything end-to-end with working UI, API, DB schema, simulator, secure downloads, and IT pack bundling.

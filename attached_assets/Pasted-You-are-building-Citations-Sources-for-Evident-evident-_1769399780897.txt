@@ -1,0 +1,178 @@
+You are building “Citations & Sources” for Evident (evident-ai.net). The goal: every answer can show clear, trustworthy citations with consistent formatting and guardrails.
+
+STACK (existing):
+- Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query
+- Backend: Node.js/Express + TypeScript
+- DB: PostgreSQL + Drizzle ORM
+- Storage: files already ingested into your system (PDF/DOCX/HTML/etc.)
+- Optional external enrichment/web sources may exist in the product.
+
+FEATURE: CITATIONS THAT FOLLOW GUIDELINES
+Implement a citations pipeline + UI that ensures:
+1) Every factual claim in an answer should be supported by at least one citation when available.
+2) Citations must be anchored to the exact text evidence (quote/snippet) and location (page/section/line/timestamp).
+3) Citations must clearly indicate SOURCE TYPE:
+   - “Uploaded document”
+   - “External web”
+   - “User note / manual”
+4) Citations must be deduplicated, stable, and clickable.
+5) The UI must not be cluttered: footnote-style markers + expandable “Sources” panel.
+
+STANDARD CITATION GUIDELINES (ENFORCE IN CODE + PROMPTING)
+- Prefer primary sources (the user’s uploaded docs) over external sources.
+- If multiple sources support a claim, show up to 2 citations per claim to reduce noise.
+- Each citation must include:
+  - title (file name or webpage title)
+  - source type badge
+  - author/publisher if known (for web)
+  - date (doc created date if available; web publish date if available; otherwise retrieval date)
+  - location pointer:
+    - PDFs: page number + (optional) bounding box highlight coords if you have them
+    - DOCX: section heading + paragraph index
+    - HTML: heading + snippet offset
+    - Audio/Video: timestamp range
+  - evidence snippet (max 240 chars)
+- Do not fabricate citations. If evidence is not found, mark “No supporting source found” and explain.
+- If answer combines reasoning + sourced facts:
+  - Tag sentences as [SOURCED] or [REASONED] internally
+  - Only [SOURCED] sentences get citation markers.
+- If user asks “show me where,” always open the source panel and jump to the cited location.
+
+DATABASE CHANGES (Drizzle)
+Add tables:
+- citations:
+  - id (uuid)
+  - workspaceId
+  - messageId (assistant message)
+  - sourceId (points to an ingested file or external URL record)
+  - sourceType enum: 'UPLOAD' | 'WEB' | 'MANUAL'
+  - title
+  - url (nullable)
+  - fileId (nullable)
+  - publisher (nullable)
+  - author (nullable)
+  - publishedAt (nullable)
+  - retrievedAt (nullable)
+  - locator JSON (required):
+    - { type: 'pdf', page: number, bbox?: [x,y,w,h] }
+    - { type: 'docx', heading?: string, paragraphIndex?: number }
+    - { type: 'html', heading?: string, startOffset?: number }
+    - { type: 'media', startSec: number, endSec: number }
+  - snippet (string, required, <= 240 chars)
+  - createdAt
+- message_claims:
+  - id (uuid)
+  - messageId
+  - claimText (string)
+  - claimType enum: 'SOURCED' | 'REASONED' | 'UNSUPPORTED'
+  - citationIds uuid[] (0..2 typical)
+  - createdAt
+
+SERVER LOGIC
+- When generating an answer, the LLM must output structured JSON:
+  {
+    "answer_markdown": "... with inline markers like [^1] ...",
+    "citations": [
+      {
+        "temp_id": "c1",
+        "sourceType": "UPLOAD",
+        "title": "Contract_SOW.pdf",
+        "fileId": "...",
+        "locator": { "type":"pdf", "page": 12 },
+        "snippet": "…",
+        "publisher": null,
+        "author": null,
+        "publishedAt": null
+      }
+    ],
+    "claims":[
+      {
+        "text":"The SLA is 99.9% uptime.",
+        "type":"SOURCED",
+        "citation_temp_ids":["c1"]
+      }
+    ]
+  }
+
+- Validate server-side:
+  - snippet exists and is <= 240 chars
+  - locator exists
+  - sourceType is correct
+  - no more than N citations overall (default 20)
+  - dedupe identical citations across same message
+- Persist citations + claims in DB.
+- If external sources enabled:
+  - store retrievedAt and url
+  - store page title and publisher if available
+
+API ENDPOINTS
+- GET /api/messages/:id (include citations + claims)
+- POST /api/chat (returns assistant message + citations)
+- GET /api/sources/:sourceId (metadata + deep link)
+- GET /api/files/:fileId/view?page=12 (existing viewer integration if present)
+If file viewer not present, create a simple PDF viewer route:
+- /files/:fileId?openPage=12
+Use PDF.js in frontend for page jumps.
+
+FRONTEND UI
+In Chat message rendering:
+- Inline superscript markers like ¹ ² ³ (click opens Sources drawer and scrolls to that citation)
+- “Sources” button below each assistant message:
+  - shows count: “Sources (6)”
+  - opens a right drawer or bottom sheet (mobile)
+Sources drawer layout:
+- Group by Source (title)
+- Under each source, list the citations (page/section/timestamp + snippet)
+- Provide “Open” action:
+  - Upload: open file viewer at page/section
+  - Web: open url in new tab (safe rel=noopener)
+- Provide “Copy citation” action:
+  - Copy as: Evident style (default)
+  - Optional: APA-like or MLA-like formats
+
+Citation styles (implement at least “Evident”):
+Evident style example:
+Title — SourceType — Location — Date
+Snippet: “...”
+Link/Open
+
+Add tiny badges:
+- UPLOAD (blue), WEB (green), MANUAL (gray)
+
+Also add an “Answer transparency” section (collapsed by default):
+- Shows counts:
+  - Sourced claims: X
+  - Reasoned statements: Y
+  - Unsupported: Z
+- If unsupported > 0 show a warning banner:
+  “Some statements couldn’t be backed by your sources. Want me to search externally?” (only if web allowed)
+
+PROMPTING / SYSTEM RULES FOR THE LLM
+- The model MUST return the structured JSON specified above.
+- It must only cite evidence that exists in the retrieval results.
+- It must not invent page numbers/snippets.
+- If retrieval returns nothing, it must set claimType UNSUPPORTED and explain.
+
+IMPLEMENTATION STEPS
+1) Add DB schema (Drizzle) + migrations for citations and message_claims
+2) Add server validation + persistence
+3) Update chat pipeline to request structured JSON output
+4) Build citation drawer UI
+5) Build PDF viewer page-jump support (PDF.js)
+6) Add “Copy citation” formatter helper
+7) Add tests:
+   - citation snippet length enforcement
+   - locator required
+   - max citations enforcement
+   - dedupe logic
+
+DELIVERABLES
+- All code changes committed
+- Include a short README section:
+  - “How citations work”
+  - “What counts as a source”
+  - “How to add new locator types”
+  - “How to disable external sources citations”
+
+Make sure the feature works nicely on mobile (bottom sheet for sources).
+Do not break existing chat rendering; if citations missing, show no markers and hide Sources button.

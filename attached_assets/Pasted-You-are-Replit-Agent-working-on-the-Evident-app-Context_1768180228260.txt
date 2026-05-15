@@ -1,0 +1,205 @@
+You are Replit Agent working on the Evident app.
+
+Context
+- Frontend: React + TypeScript + Vite + Tailwind + shadcn/ui + Wouter + TanStack Query
+- Backend: Node.js + Express + TypeScript + PostgreSQL + Drizzle ORM
+- Finance module exists (Invoice Reconciliation) with document extraction (PyMuPDF service) producing `extracted_json`.
+- Reconciliation engine produces `reconciliations` + `reconciliation_findings`.
+
+Goal
+Add a clean “Manual Correction & Review” workflow that lets users:
+1) Correct extracted invoice/PO/GRN data BEFORE reconciliation (normalization corrections)
+2) Accept / Override reconciliation findings AFTER reconciliation (human-in-the-loop decisions)
+All changes must be fully auditable and source-backed, without turning Evident into an accounting system.
+No payments. No ERP record editing. Only “normalized snapshot + review decisions + export”.
+
+Hard requirements
+- Strict audit trail: who changed what, when, and why.
+- Never overwrite original extraction. Store versions/snapshots.
+- Manual corrections must be explicit and visible (banner + change history).
+- Override requires a mandatory note.
+- Export is allowed only when all CRITICAL findings are resolved (accepted/overridden) OR fixed via normalization + rerun.
+
+Deliverables
+1) DB schema updates (Drizzle migrations)
+2) Backend API routes for corrections + reviews
+3) Diff/patch utilities (pure TS)
+4) Frontend UI for:
+   - “Review Extraction” corrections
+   - “Reconciliation Findings” accept/override
+   - “Change History / Audit” viewer
+5) Tests for key logic + API
+6) Update docs/README
+
+== DATA MODEL CHANGES ==
+A) Add versioning to finance documents
+- Add columns to `finance_documents`:
+  - `extracted_json_original` JSONB (nullable for older rows; backfill from existing `extracted_json`)
+  - `extracted_json_normalized` JSONB (nullable)
+  - `active_extracted_json` JSONB (always points to normalized if exists else original)
+  - `normalization_status` enum: `raw` | `normalized`
+  - `normalized_by_user_id` text nullable
+  - `normalized_at` timestamp nullable
+
+B) Add finance_document_changes table (append-only audit log)
+- `finance_document_changes`:
+  - id, org_id, finance_document_id
+  - change_type: `normalize`
+  - patch_json (JSON Patch style or custom diff)
+  - before_json (optional; store small snapshot or hash)
+  - after_json (optional; store small snapshot or hash)
+  - note (text) nullable but recommended
+  - created_by_user_id
+  - created_at
+
+C) Extend reconciliation_reviews to cover per-finding decisions (if not already)
+- Ensure `reconciliation_reviews` supports:
+  - reconciliation_id
+  - finding_id (nullable for “mark reconciliation reviewed” action)
+  - decision: `accepted` | `overridden` | `mark_reviewed`
+  - note (text) REQUIRED when decision == overridden
+  - created_by_user_id
+  - created_at
+
+D) Add derived “resolved” state to findings (do not mutate findings)
+- Keep `reconciliation_findings` immutable.
+- Compute resolution by joining reviews:
+  - A finding is resolved if latest decision for that finding is accepted or overridden.
+- Add helper view/query in backend to return findings with `resolutionStatus` and `latestReview`.
+
+== BACKEND API ==
+Create/extend routes under `/api/finance`:
+
+1) Normalization (pre-reconciliation)
+- PUT `/api/finance/documents/:id/normalize`
+  body:
+   {
+     "normalized_json": { ... },     // full normalized doc JSON (invoice/po/grn)
+     "note": "Fixed total and line item qty"
+   }
+  behavior:
+   - validate user auth + org scope
+   - ensure `extracted_json_original` is set (if missing, set it from existing `extracted_json`)
+   - set `extracted_json_normalized` = normalized_json
+   - set `active_extracted_json` = normalized_json
+   - set status = normalized, set normalized_by/at
+   - write row to `finance_document_changes` with patch_json computed from original->normalized
+   - return updated finance_document + computed diff summary
+
+- POST `/api/finance/documents/:id/reset-normalization`
+  behavior:
+   - set `extracted_json_normalized` null
+   - set `active_extracted_json` = extracted_json_original
+   - status = raw
+   - write audit change row (change_type normalize_reset)
+
+2) Findings review (post-reconciliation)
+- POST `/api/finance/reconciliations/:id/findings/:findingId/review`
+  body:
+   { "decision": "accepted" | "overridden", "note": "..." }
+  rules:
+   - note REQUIRED for overridden
+   - store in reconciliation_reviews
+   - return updated finding resolution (latestReview + resolved)
+
+3) Mark reconciliation reviewed (overall)
+- POST `/api/finance/reconciliations/:id/mark-reviewed`
+  body: { "note": "Reviewed all variances; approved for export" }
+  behavior:
+   - only allowed if all critical findings are resolved OR there are no critical findings
+   - store reconciliation_reviews with decision=mark_reviewed
+   - update `reconciliations.status` -> `reviewed`
+   - return updated reconciliation
+
+4) Get audit history
+- GET `/api/finance/documents/:id/history`
+  returns:
+   - original/normalized metadata
+   - list of finance_document_changes with diff summary
+
+- GET `/api/finance/reconciliations/:id/audit`
+  returns:
+   - reconciliation_reviews timeline
+   - per-finding latest decision
+
+5) Export gating enforcement
+- In export endpoints, enforce:
+  - if any CRITICAL findings unresolved => 409 with friendly message
+  - else allow export
+
+== DIFF / PATCH UTILITIES ==
+- Implement `shared/jsonDiff.ts`:
+  - `diff(original, normalized) -> { patch, summary[] }`
+  - summary example:
+    - "totals.total: 1320 -> 1318.50"
+    - "lineItems[2].qty: 10 -> 8"
+  - Keep it simple, no external libs; handle objects/arrays shallowly with stable keys:
+    - for lineItems, match by (sku if present else description+unitPrice) heuristic
+
+== FRONTEND UI ==
+A) Review Extraction (Normalization Editor)
+- Route: `/finance/documents/:id/review`
+- Use an editable form + line items table:
+  - vendor, invoiceNumber, dates, currency
+  - totals: subtotal/tax/total
+  - poReference (for invoices)
+  - lineItems: add/remove/edit
+- Buttons:
+  - “Save corrections” (calls normalize endpoint) -> toast success
+  - “Reset to original” (dialog confirm) -> calls reset-normalization
+- Banner:
+  - If normalized: “This document has manual corrections” + “View changes”
+- “View changes” opens dialog showing diff summary list from API
+
+B) Reconciliation Detail (Findings resolution)
+- In Findings tab, each finding row shows:
+  - Severity badge (info/warning/critical)
+  - Message + recommended action
+  - Resolution status:
+     - Unresolved
+     - Accepted (who/when)
+     - Overridden (who/when + note)
+- Actions:
+  - Accept button
+  - Override button -> opens dialog requiring note
+- If user edits invoice/PO/GRN after reconciliation:
+  - show banner: “Underlying document changed. Re-run reconciliation recommended.”
+  - Provide “Re-run” CTA
+
+C) Audit tab
+- Show timeline combining:
+  - document corrections (finance_document_changes)
+  - finding decisions (reconciliation_reviews)
+- Simple chronological list with actor + timestamp + note
+
+D) Export gating in UI
+- Disable “Export” buttons if critical unresolved
+- Show tooltip: “Resolve critical findings to export”
+
+== BUSINESS RULES ==
+- Manual normalization is allowed anytime.
+- Reconciliation findings are immutable; only reviews change resolution.
+- Override always requires note.
+- Reconciliation can be marked reviewed only if critical findings resolved.
+- Exports must enforce same rule server-side.
+
+== TESTS ==
+Backend tests:
+- normalize endpoint:
+  - sets original once, creates change log, updates active_extracted_json
+- override requires note (400)
+- export blocked when critical unresolved (409)
+- mark-reviewed blocked when critical unresolved
+
+Frontend tests (lightweight if project supports):
+- components render states for resolved/unresolved findings
+- override dialog requires note
+
+Now implement:
+1) DB migrations
+2) Backend routes + diff utility + tests
+3) Frontend normalization editor + findings actions + audit views
+4) Ensure feature flag gating across all routes and nav
+5) Update README
+
+Do not break existing features. Keep types strict. Provide clean empty states and toasts.

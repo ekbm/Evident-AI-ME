@@ -1,0 +1,117 @@
+You are a senior product engineer + UX designer building “Evident Live” inside our existing Evident web app.
+
+GOAL
+Add a new public-facing flow on the website that lets users run a lightweight “AI Readiness Assessment” (Evident Live) and, if they want an Agent, they can submit a “Contact Us for Agent” request (no agent download required in v1).
+
+IMPORTANT CONSTRAINTS
+- This is a WEB-ONLY v1. No desktop agent build/download in this task.
+- The assessment must be SAFE + LIGHTWEIGHT:
+  - Prefer folder picker via File System Access API (Chrome/Edge) if possible.
+  - If unsupported, fallback to uploading a small sample set of files (multi-file upload).
+  - Do NOT attempt deep content parsing for every file in v1; only do basic signals:
+    file type, size, lastModified, filename patterns, folder depth, duplicates by name/size, obvious scan PDFs (if detectable), and “metadata presence” heuristics (based on filename patterns).
+- Provide a simple score (0–100) with category breakdown and clear recommendations.
+- Make the UX friendly and transparent: “We don’t upload your file contents for this scan” (unless user uploads; then clearly say uploads happen).
+- After results, provide a CTA: “Need the Agent? Contact us” → opens a form and sends request to backend (or stores in DB).
+- Ensure this works on mobile and desktop.
+- Keep Apple-review-safe language (no “enterprise surveillance”). Use “opt-in” language.
+
+TECH STACK (match our app)
+- React + TypeScript
+- Tailwind + shadcn/ui
+- Wouter routing
+- TanStack Query if needed
+- Node/Express backend (existing)
+- PostgreSQL (existing) with Drizzle ORM if available
+
+DELIVERABLES
+1) New route(s)
+- /live (landing + start assessment)
+- /live/scan (scan UI)
+- /live/results (results UI)
+- /live/contact (agent contact form) OR modal from results
+
+2) UI/UX
+- Landing page sections:
+  - Headline: “Check how AI-ready your documents are — in minutes.”
+  - “Start Scan” button
+  - “How it works” (3 steps)
+  - Trust copy: privacy & safety
+- Scan screen:
+  - Primary option: “Choose a folder” (if browser supports)
+  - Secondary option: “Upload sample files”
+  - Progress indicator + file count
+  - Cancel/reset
+- Results screen:
+  - Score gauge or big score card
+  - Breakdown cards:
+    - Format Compatibility
+    - Structure & Naming
+    - Duplicates / Version Clarity
+    - Metadata Signals
+    - Searchability Signals (heuristic)
+  - “Top 5 Fixes” recommendations list
+  - “Download Report (PDF)” button (can be simple HTML-to-PDF in v1)
+  - CTA: “Need the Agent? Contact us”
+- Contact form:
+  - Name
+  - Work email
+  - Company
+  - Role
+  - What you want (dropdown: “Ongoing AI readiness”, “Auto-tagging/metadata”, “Duplication cleanup”, “Knowledge sync”, “Not sure”)
+  - Optional message
+  - Consent checkbox: “You can contact me about Evident Agent”
+  - Success state + email confirmation message
+
+3) Backend
+- Add endpoint POST /api/agent-leads
+- Validate inputs, store to DB table agent_leads
+- Include timestamp + source = “evident_live”
+- Return success JSON
+- (Optional) send an email notification if we already have email service; otherwise just store lead
+
+4) Scoring logic (v1 heuristic)
+Compute a score 0–100 from these signals (document this in code comments):
+- Format Compatibility (0–25):
+  - modern formats score higher: pdf/docx/xlsx/pptx/txt/md
+  - images/scanned PDFs reduce score
+- Structure & Naming (0–20):
+  - filenames containing dates, versions, owners, project codes increase score
+  - “final_final_v7” patterns reduce score
+- Duplicates & Version Clarity (0–20):
+  - detect duplicates by same name + same size
+  - high duplicate ratio lowers score
+- Metadata Signals (0–20):
+  - if lastModified exists, file sizes reasonable, and naming suggests owner/date
+- Searchability Signals (0–15):
+  - if many files are images or “scan” patterns, reduce
+  - if many are text-friendly formats, increase
+
+5) Browser support handling
+- Detect File System Access API:
+  - if available: allow folder selection via showDirectoryPicker and iterate entries (best-effort)
+  - if not: show upload fallback
+- Ensure graceful errors and user-friendly messages.
+
+6) Privacy copy
+- If using folder picker: “We analyze file names and basic attributes locally in your browser. File contents are not uploaded.”
+- If upload fallback: “These files are uploaded to generate your report. Don’t upload sensitive files.”
+
+7) Analytics (optional but helpful)
+Track events:
+- live_start_clicked
+- live_folder_selected OR live_files_uploaded
+- live_scan_completed
+- live_report_downloaded
+- live_contact_opened
+- live_contact_submitted
+
+IMPLEMENT NOW
+- Create the pages, components, API route, DB schema, and wire the flow end-to-end.
+- Keep components clean and reusable.
+- Add minimal styling that matches the rest of Evident.
+- Write code in a way that won’t break our existing web app routes.
+
+OUTPUT FORMAT
+- Provide the full code changes: new React routes/components + backend endpoint + DB migration/schema.
+- Include short setup notes if any env vars are required.

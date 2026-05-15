@@ -1,0 +1,231 @@
+You are working in an existing Node.js + React codebase (Evident) that supports document uploads and a chat-based Q&A experience. Implement a “University Student Exam Prep” feature for transcripts AND add a Smart Intent Layer so Evident automatically adapts suggestions and templates based on uploaded documents and user questions, with minimal UI clutter.
+
+PRIMARY GOALS
+1) Transcript → Exam Prep generators (5 types) accessible from the chat window.
+2) Smart Intent Layer that detects what the user likely needs (student vs professional vs general) based on document type + question signals, then adapts:
+   - placeholder hints
+   - post-answer suggestion chips
+   - which templates are recommended
+   WITHOUT forcing heavy onboarding.
+
+UX CONSTRAINTS (VERY IMPORTANT)
+- Do NOT add permanent toolbars or lots of buttons.
+- The main experience remains chat Q&A.
+- Use rotating placeholder hints in the chat input (only when empty).
+- After each assistant answer, show a subtle text row with clickable text chips (not big buttons).
+- Use wording “Save / Saved”. Never show “Export”.
+- Do NOT require onboarding selection. Personalization should be progressive and optional.
+
+MANDATORY FEATURES — EXAM PREP GENERATORS (DO NOT SKIP)
+You MUST implement ALL five transcript-based generators (these are points 3.1 to 3.5):
+3.1 Exam Focus
+3.2 Study Summary
+3.3 Practice Questions
+3.4 Flashcards
+3.5 Cheat Sheet (one-page bullet revision)
+
+Each generator must:
+- Use ONLY the transcript content
+- Return structured JSON
+- Be selectable from within the chat UI
+- Be automatically Saved (persisted) and viewable later
+
+TECH STACK
+- Backend: Node.js (Express-style routes)
+- Frontend: React
+- Use existing auth, workspace, and document permission patterns
+- Use the same LLM client already used for chat Q&A
+
+────────────────────────────────────────
+PHASE 0 — RECON (DO THIS FIRST)
+1) Locate the chat UI components (React): PromptInput / Ask / Chat / MessageInput / AnswerBox.
+2) Locate backend Q&A route(s) (Node): /api/ask, /api/chat, /ask, /chat, rag, llm.
+3) Identify how transcript text is stored and loaded by documentId.
+4) Identify the DB layer (Prisma/Drizzle/Knex/SQL). Follow existing patterns.
+5) Identify how “Save” or stored items are handled today (if any).
+
+Output:
+- List exact files/routes you will modify.
+
+────────────────────────────────────────
+PHASE 1 — DATABASE (STUDY MATERIAL STORAGE)
+Create a new table using existing DB tooling:
+
+Table: study_materials
+Fields:
+- id
+- user_id
+- workspace_id
+- source_document_id
+- type (enum/string: exam_focus | study_summary | practice_questions | flashcards | cheat_sheet)
+- title
+- content (JSON preferred, fallback TEXT)
+- created_at
+
+Migration required.
+
+────────────────────────────────────────
+PHASE 2 — BACKEND API (STUDY GENERATION)
+Implement endpoints:
+
+POST /api/study/generate
+Body: { workspaceId, documentId, type }
+
+Steps:
+1) Authenticate user
+2) Permission check user->workspace and user->document
+3) Load transcript text for documentId
+4) Select prompt template for requested type (see Phase 3)
+5) Call existing LLM client
+6) Enforce JSON output; JSON.parse; if parse fails, return a safe fallback object
+7) Save to study_materials
+8) Return saved record
+
+GET /api/study?workspaceId=&documentId=
+- List saved study_materials for this transcript (newest first)
+
+GET /api/study/:id
+- Return one saved study_material
+
+Error handling:
+- Use consistent error shape already used in API
+- User-friendly errors (not stack traces)
+
+────────────────────────────────────────
+PHASE 3 — PROMPT TEMPLATES (STRICT JSON ONLY)
+Create server/prompts/studyPrompts.js.
+All prompts must:
+- Use ONLY transcript content
+- If not present in transcript: explicitly say “Not covered in this lecture”
+- Output valid JSON only (no markdown code fences)
+
+3.1 Exam Focus JSON:
+{
+  "exam_critical_topics":[{"topic":"","why_it_matters":"","evidence":""}],
+  "key_definitions":[{"term":"","definition":""}],
+  "important_examples":[{"example":"","supports_concept":""}],
+  "revision_priorities":{"must_know":[],"good_to_know":[],"optional":[]}
+}
+
+3.2 Study Summary JSON:
+{
+  "key_concepts":[],
+  "examples":[],
+  "formulas_or_rules":[],
+  "memorize":[],
+  "understand":[]
+}
+
+3.3 Practice Questions JSON:
+{
+  "short_answer":[],
+  "long_answer":[],
+  "self_explain":[]
+}
+
+3.4 Flashcards JSON:
+{
+  "cards":[{"front":"","back":"","tag":"easy|mid|exam-critical"}]
+}
+
+3.5 Cheat Sheet JSON:
+{
+  "one_page_bullets":[],
+  "top_10_to_remember":[],
+  "common_mistakes":[]
+}
+
+────────────────────────────────────────
+PHASE 4 — SMART INTENT LAYER (AUTO PERSONALIZATION)
+Implement a lightweight “Smart Intent Layer” in the backend that detects what the user likely needs based on:
+- document type (transcript vs contract/policy/report)
+- question keywords and phrasing
+- optional recent actions (what templates they clicked)
+
+This does NOT require ML. Use heuristics scoring + confidence.
+Create: server/intent/intentDetector.js and server/intent/suggestionEngine.js.
+
+Intent outputs:
+- intent: "student" | "professional" | "general"
+- confidence: 0..1
+- recommendedTemplates: array of template types (from the 5 study types for transcripts, and allow future expansion)
+
+Heuristic rules (v1):
+- If document looks like transcript (keywords: “lecture”, timestamps, speaker labels, or metadata indicates transcript):
+  + student score
+- If question includes: “exam”, “revise”, “flashcards”, “practice questions”, “cheat sheet”, “explain simply”:
+  + student score
+- If document looks like legal/compliance (keywords: “agreement”, “clause”, “liability”, “policy”, “audit”):
+  + professional score
+- If question includes: “risk”, “obligation”, “compliance”, “summarize for management”, “action items”:
+  + professional score
+
+Store minimal preference safely (optional, but recommended):
+- If user repeatedly uses student templates, persist a small user_preference record:
+  { user_id, preferred_intent, updated_at }
+But do NOT require onboarding selection.
+
+Add endpoint:
+GET /api/intent/suggestions?workspaceId=&documentId=
+Returns:
+{
+  "intent":"student",
+  "confidence":0.82,
+  "placeholderHints":[...],
+  "postAnswerChips":[...],
+  "recommendedTemplates":[...]
+}
+
+Frontend should call this to render context-aware placeholder hints and chips.
+If endpoint is not available/fails, fallback to default generic hints.
+
+────────────────────────────────────────
+PHASE 5 — FRONTEND (REACT) CHAT UX (NO CLUTTER)
+1) Rotating placeholder hints in chat input (only when empty).
+- Fetch hints from /api/intent/suggestions (fallback to default transcript hints).
+- Rotate every ~5 seconds with a fade.
+- Pause while user types.
+
+2) Post-answer suggestion row under assistant answers:
+“Want more from this transcript? Exam Focus · Practice · Flashcards · Cheat Sheet · Summary”
+- Fetch chips from /api/intent/suggestions (fallback to default transcript chips)
+- Use small clickable text chips, not big buttons
+- Clicking a chip triggers generation:
+  - calls POST /api/study/generate with correct type
+  - posts the generated content as a new assistant message in the chat
+  - show small “Saved ✓” label in the message header/footer
+
+3) Add a lightweight “Study Materials” drawer/panel:
+- Lists saved items for this transcript
+- Clicking shows the stored content (render with StudyMaterialRenderer)
+
+────────────────────────────────────────
+PHASE 6 — RENDERING
+Create StudyMaterialRenderer component:
+- Based on type, render headings + bullet lists
+- Clean, readable, mobile friendly
+
+────────────────────────────────────────
+EDGE CASES
+- If transcript is too long, compress transcript server-side before generation.
+- Add basic caching: if same documentId+type exists recently, reuse the latest unless “regenerate” is introduced later.
+- Make all failures user-friendly and non-blocking.
+
+ACCEPTANCE CRITERIA
+- All 5 generators work end-to-end in chat
+- Smart Intent suggestions work and gracefully fallback
+- No UI clutter added
+- “Save / Saved” wording used everywhere
+- Study materials persist across refresh and are listable/viewable
+- Works on mobile and desktop
+
+IMPLEMENTATION ORDER
+1) DB migration: study_materials
+2) POST /api/study/generate for Exam Focus first
+3) StudyMaterialRenderer + chat message display
+4) Add post-answer suggestion chips
+5) Implement remaining 4 generators
+6) Implement /api/intent/suggestions + heuristic intent detector
+7) Wire frontend to use intent-driven placeholder hints and chips
+8) Add Study Materials drawer/list view
+Proceed now and implement end-to-end.

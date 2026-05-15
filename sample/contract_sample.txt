@@ -1,0 +1,54 @@
+SERVICE AGREEMENT
+
+This Service Agreement ("Agreement") is entered into as of January 1, 2025, by and between:
+
+PROVIDER: TechCorp Solutions Inc., a Delaware corporation ("Provider")
+CLIENT: Acme Industries Ltd., a California corporation ("Client")
+
+1. SERVICES
+Provider agrees to deliver cloud hosting and maintenance services for Client's web applications.
+
+2. PAYMENT TERMS
+Client shall pay Provider the sum of $5,000 USD monthly for the services rendered.
+Payment is due within 14 days of receiving each monthly invoice.
+Late payments shall incur a 1.5% monthly interest charge.
+
+3. TERM AND TERMINATION
+This Agreement shall commence on January 1, 2025, and continue for a period of 12 months.
+Either party may terminate this Agreement with 30 days written notice.
+Upon termination, Client must pay all outstanding invoices within 7 days.
+
+4. OBLIGATIONS OF PROVIDER
+Provider must maintain 99.9% uptime for all hosted services.
+Provider shall respond to critical support tickets within 2 hours.
+Provider must perform weekly backups of all Client data.
+Provider shall provide monthly performance reports by the 5th of each month.
+
+5. OBLIGATIONS OF CLIENT
+Client must provide access credentials to Provider within 5 business days of signing.
+Client shall notify Provider of any security concerns immediately.
+Client must not share Provider's proprietary tools with third parties.
+Client shall maintain current contact information for emergency notifications.
+
+6. CONFIDENTIALITY
+Both parties agree to keep confidential all proprietary information disclosed during the term.
+Confidential information shall not be disclosed to third parties without written consent.
+This confidentiality obligation survives termination for 3 years.
+
+7. LIABILITY
+Provider's total liability shall not exceed the fees paid in the preceding 12 months.
+Neither party shall be liable for indirect, incidental, or consequential damages.
+
+8. DISPUTE RESOLUTION
+Any disputes shall be resolved through binding arbitration in San Francisco, California.
+The prevailing party shall be entitled to recover reasonable attorney's fees.
+
+SIGNATURES
+
+_________________________
+TechCorp Solutions Inc.
+Date: January 1, 2025
+
+_________________________
+Acme Industries Ltd.
+Date: January 1, 2025

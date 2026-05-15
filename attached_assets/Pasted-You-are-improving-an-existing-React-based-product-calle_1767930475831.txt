@@ -1,0 +1,142 @@
+You are improving an existing React-based product called “Evident”. The immediate goal is to add a new first-class metric called “Knowledge Extractability” (AI Readiness Coverage) BEFORE building the full agent architecture.
+
+SCOPE (PHASE 1 ONLY)
+Implement a workspace/org-level metric that summarizes how much ingested content is:
+- Text-readable (fully extractable)
+- Partially readable
+- Non-text readable (image/scanned/binary)
+- Blocked by policy
+- Failed extraction
+
+This metric must be visible in the UI as a dashboard card + breakdown view. Do NOT implement OCR or agent services in this phase. This is purely classification + aggregation + UI.
+
+ASSUMPTIONS
+- Evident is built with React 18 + TypeScript + Vite + Tailwind + shadcn/ui
+- Backend exists (Node/Express + Postgres recommended). If backend doesn’t exist, create a minimal one.
+- There is an existing concept of “Sources / Files / Documents” being ingested, even if currently mocked.
+
+REQUIREMENTS
+
+1) DATA MODEL
+Add (or create) a table for ingested files with extraction outcomes:
+
+Table: ingested_files
+- id (uuid)
+- workspace_id (uuid)
+- source_name (string)  // filename
+- source_path (string, optional)
+- source_type (string)  // pdf/docx/pptx/txt/png/jpg/zip/etc
+- file_size_bytes (bigint)
+- page_count (int, nullable)
+- extracted_text_bytes (bigint, default 0)
+- extraction_state (enum string):
+    - text_readable
+    - partially_readable
+    - non_text_readable
+    - blocked_by_policy
+    - failed_extraction
+- blocked_reason (string nullable)
+- error_code (string nullable)
+- last_processed_at (timestamp)
+- created_at (timestamp)
+
+If there is already a files table, extend it instead of creating a new one.
+
+2) AGGREGATION
+Create a backend aggregation endpoint:
+
+GET /api/workspaces/:workspaceId/extractability
+
+Return:
+- total_files
+- total_bytes
+- by_state:
+    - count and bytes per extraction_state
+- percentages by state (by count and by bytes)
+- “ai_usable_percentage” (count-based and bytes-based):
+    ai-usable = text_readable + partially_readable
+- “visible_but_not_usable_percentage”:
+    non_text_readable + blocked_by_policy + failed_extraction
+
+Also return:
+- top_non_extractable_files (top 10 by size) with name/type/state/reason
+- trend placeholders (optional): last 7 days counts if easy; otherwise leave for future
+
+3) CLASSIFICATION LOGIC (SIMPLE, HONEST)
+Implement a simple server-side rule for classification for now (no OCR):
+- If file type is txt/md/json/csv/docx/pptx/pdf and extracted_text_bytes > 0 -> text_readable
+- If file type is pdf/docx/pptx and extracted_text_bytes is small relative to file_size_bytes -> partially_readable (e.g. extracted_text_bytes/file_size_bytes < 0.02)
+- If file type is png/jpg/jpeg/gif/tiff/heic -> non_text_readable
+- If file type is zip/exe/dmg/bin/cad -> non_text_readable
+- If blocked_reason exists -> blocked_by_policy
+- If error_code exists -> failed_extraction
+These are MVP heuristics; allow manual overrides later.
+
+4) SEED / MOCK DATA (IMPORTANT)
+Add realistic seed data for at least 200 files across 2 workspaces:
+- mix of pdf/docx/pptx/txt/images/zips
+- include 20 large files (50MB–300MB)
+- include:
+  - 60% text_readable
+  - 15% partially_readable
+  - 20% non_text_readable
+  - 3% blocked_by_policy
+  - 2% failed_extraction
+
+If no DB exists, store mock data in memory or sqlite, but prefer Postgres if already used.
+
+5) UI IMPLEMENTATION (REACT)
+Add a “Knowledge Extractability” card to the main dashboard page.
+
+Card content:
+- Primary number: “AI-readable coverage” (count-based %) and optional bytes-based %
+- Breakdown mini bar or donut-style component (use simple div bars; no chart library needed)
+- Quick stats:
+  - Text-readable %
+  - Non-readable %
+  - Blocked %
+  - Failed %
+
+Clicking the card opens /dashboard/extractability (or /workspaces/:id/extractability) with:
+- a larger breakdown view
+- a table of “Top non-extractable files” (name, type, size, state, reason)
+- explanation text (human, trust-building):
+  “These files exist in your workspace but are not currently AI-readable. Evident will not guess their contents. Optional enrichment (OCR/vision) can be enabled later.”
+
+Use shadcn/ui components (Card, Badge, Table, Tabs, Progress).
+
+6) UX COPY (MUST BE TRANSPARENT)
+Include consistent wording:
+- “Text-readable (AI-ready)”
+- “Partially readable”
+- “Non-text readable (image/binary)”
+- “Blocked by policy”
+- “Extraction failed”
+
+For the main dashboard, show a line:
+“This answer coverage reflects what AI can reliably use today.”
+
+7) PERFORMANCE
+- The list page should paginate (or virtualize if needed) but for MVP it’s fine to show top 10 + summary only.
+- Cache the extractability endpoint for 30–60 seconds on the client (React Query).
+
+8) OUT OF SCOPE (DO NOT BUILD NOW)
+- No OCR
+- No vision model
+- No Windows Service / LaunchDaemon
+- No full agent architecture
+- No file upload UI (unless already exists)
+
+DELIVERABLES
+- Working backend endpoint returning extractability summary
+- DB migration/Drizzle schema update
+- Seed data script
+- React dashboard card + detailed page
+- README update: how to view the metric + how to run seeds
+
+Make sure everything runs in Replit:
+- npm run dev (frontend)
+- npm run dev:server (backend)
+- npm run db:seed
+
+Build it end-to-end and keep the UI clean and modern.

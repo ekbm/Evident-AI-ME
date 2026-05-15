@@ -1,0 +1,164 @@
+You are a senior full-stack engineer working on Evident AI.
+
+Goal:
+Implement a new Finance Mode feature called “Auto Financial Snapshot”.
+
+Feature summary:
+When a user uploads a finance-related document (annual report, 10-K, 10-Q, earnings transcript, investor presentation, financial statements, company report), Evident should automatically generate a concise financial intelligence panel without requiring the user to type a prompt.
+
+This feature should make Finance Mode feel proactive and intelligent.
+
+Core product behavior:
+1. User uploads a finance-related document into Evident.
+2. After document ingestion is complete, automatically run a finance snapshot extraction job.
+3. Generate a structured summary card called “Auto Financial Snapshot”.
+4. Show key company information, extracted metrics, top risks, and strategic themes.
+5. Every item must be grounded in the uploaded document with citations where possible.
+6. Do not give buy/sell/investment advice.
+7. This is document intelligence, not financial advice.
+
+What to build:
+
+A) Detect finance-related documents
+Create logic to identify whether an uploaded file belongs to Finance Mode or contains finance/company-report content.
+Examples:
+- annual report
+- 10-K / 10-Q
+- earnings transcript
+- investor presentation
+- financial statements
+- SEC filing
+- company update report
+
+Use:
+- current Evident mode if available
+- file metadata / title
+- lightweight content classification if needed
+
+B) Auto-run a snapshot extraction pipeline after upload
+After successful upload + text extraction/chunking, trigger a background task or server-side process to generate a finance snapshot.
+
+C) Extract these fields if present:
+1. Company name
+2. Reporting period / fiscal year / quarter
+3. Revenue
+4. Revenue growth (YoY if possible)
+5. Operating income / operating margin
+6. Net income
+7. Cash / cash equivalents
+8. Debt / net debt
+9. Key risks mentioned
+10. Strategic priorities / focus areas
+11. Major business segments if available
+12. Management outlook / forward-looking themes if available
+
+D) Snapshot output structure
+Return a JSON object like:
+
+{
+  "companyName": "",
+  "reportingPeriod": "",
+  "metrics": {
+    "revenue": "",
+    "revenueGrowth": "",
+    "operatingMargin": "",
+    "netIncome": "",
+    "cashPosition": "",
+    "debtLevel": ""
+  },
+  "topRisks": [
+    {
+      "label": "",
+      "summary": "",
+      "citation": ""
+    }
+  ],
+  "strategicFocus": [
+    {
+      "label": "",
+      "summary": "",
+      "citation": ""
+    }
+  ],
+  "managementOutlook": [
+    {
+      "label": "",
+      "summary": "",
+      "citation": ""
+    }
+  ],
+  "sourceDocumentId": "",
+  "generatedAt": ""
+}
+
+E) UI requirement
+Create a dashboard card/component in Finance Mode called:
+
+“Auto Financial Snapshot”
+
+Layout idea:
+- Company name
+- Reporting period
+- Metric cards
+- Top risks
+- Strategic focus
+- Outlook
+- citations / evidence links
+
+Tone:
+- professional
+- concise
+- grounded in source
+- no hype language
+
+F) Guardrails
+Important:
+- Do NOT provide stock recommendations
+- Do NOT say “this stock is a buy” or “better investment”
+- Use wording like:
+  - “document-based financial snapshot”
+  - “key metrics identified from the uploaded report”
+  - “risks mentioned in the document”
+  - “management outlook based on source text”
+
+G) Citation behavior
+Where Evident already supports citations, reuse that system.
+Each extracted insight should point back to source chunk/page/section when available.
+
+H) Engineering expectations
+Please:
+1. Inspect the current codebase and reuse existing ingestion/parsing/chunking systems.
+2. Find the upload completion hook / ingestion completion event.
+3. Add the snapshot generation as a post-processing step.
+4. Store the snapshot result in the database for later retrieval.
+5. Expose an API endpoint to fetch the snapshot by document ID or workspace item ID.
+6. Render the snapshot automatically in the Finance Mode UI after upload.
+7. If extraction fails, fail gracefully and show:
+   “Snapshot could not be generated for this document.”
+8. Add loading / processing states:
+   - “Analyzing financial document…”
+   - “Generating snapshot…”
+
+I) Nice-to-have
+If multiple annual reports for the same company exist, prepare the architecture so future versions can support trend comparisons across years.
+
+J) Deliverables
+1. Implement the backend extraction flow
+2. Implement storage model / schema changes if needed
+3. Implement API route(s)
+4. Implement frontend card/component
+5. Wire it into Finance Mode upload flow
+6. Add clear comments in code
+7. At the end, provide a short summary of:
+   - files created/updated
+   - how the flow works
+   - any assumptions made
+
+Important:
+- Reuse existing Evident patterns and architecture
+- Keep the implementation production-friendly
+- Do not break existing upload/chat behavior
+- Prefer modular code so this can later support:
+  - claim verification
+  - narrative drift
+  - risk signal detection
