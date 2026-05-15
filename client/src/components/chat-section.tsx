@@ -442,14 +442,14 @@ function detectFrustration(text: string): boolean {
   return FRUSTRATION_PATTERNS.some(p => p.test(text));
 }
 
-function CollapsibleAnswer({ content, isLatest, forceCollapsed }: { content: string; isLatest: boolean; forceCollapsed?: boolean }) {
+function CollapsibleAnswer({ content, isLatest, forceCollapsed, onCitationClick, standardCitations }: { content: string; isLatest: boolean; forceCollapsed?: boolean; onCitationClick?: (num: number) => void; standardCitations?: StandardCitation[] }) {
   const [expanded, setExpanded] = useState(forceCollapsed ? false : isLatest);
   const isLong = content.length > COLLAPSE_CHAR_THRESHOLD;
 
   if (!isLong) {
     return (
       <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>p:last-child]:mb-0">
-        <FormattedAnswer content={content} />
+        <FormattedAnswer content={content} onCitationClick={onCitationClick} standardCitations={standardCitations} />
       </div>
     );
   }
@@ -460,7 +460,7 @@ function CollapsibleAnswer({ content, isLatest, forceCollapsed }: { content: str
         className={`prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>p:last-child]:mb-0 overflow-hidden transition-all duration-200`}
         style={!expanded ? { maxHeight: '6rem' } : undefined}
       >
-        <FormattedAnswer content={content} />
+        <FormattedAnswer content={content} onCitationClick={onCitationClick} standardCitations={standardCitations} />
       </div>
       {!expanded && (
         <div className="h-6 -mt-6 relative bg-gradient-to-t from-muted/70 to-transparent rounded-b pointer-events-none" />
@@ -2223,7 +2223,20 @@ export function ChatSection({
                             </span>
                           </div>
                         )}
-                        <CollapsibleAnswer content={extractFollowUpQuestions(msg.content).cleanContent} isLatest={idx === messages.length - 1} forceCollapsed={chatOnly} />
+                        <CollapsibleAnswer
+                          content={extractFollowUpQuestions(msg.content).cleanContent}
+                          isLatest={idx === messages.length - 1}
+                          forceCollapsed={chatOnly}
+                          standardCitations={msg.standardCitations}
+                          onCitationClick={(num) => {
+                            const cite = msg.standardCitations?.find(c => c.n === num);
+                            const ref = cite?.sourceRef || cite?.title;
+                            if (ref) {
+                              const docName = ref.split(':')[0];
+                              toast({ title: `Source [${num}]`, description: docName });
+                            }
+                          }}
+                        />
                         {!msg.isCompareMode && msg.versionUsed && (isAdmin || userPlan === "premium_org") && (
                           <div className="mt-1.5 flex items-center gap-1" data-testid={`badge-version-${msg.versionUsed}`}>
                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${
